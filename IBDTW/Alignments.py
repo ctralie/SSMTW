@@ -9,7 +9,6 @@ def backtrace(backpointers, node, involved):
             optimal = True
             involved[node[0], node[1]] = 1
     if node[0] == 0 and node[1] == 0:
-        print node
         return True #Reached the beginning
     return optimal
 
@@ -91,22 +90,22 @@ def DTW(X, Y, distfn, initialCost = 0):
     backtrace(backpointers, (M, N), involved) #Recursive backtrace from the end
     return (D, CSM, backpointers, involved)
 
-def constrainedDTW(X, Y, distfn, i, j):
-    print "Constraint: (%i, %i)"%(i, j)
+def constrainedDTW(X, Y, distfn, ci, cj):
+    print "Constraint: (%i, %i)"%(ci, cj)
     M = X.shape[0]
     N = Y.shape[0]
     CSM = np.zeros((M, N))
     for i in range(M):
         for j in range(N):
             CSM[i, j] = distfn(X[i, :], Y[j, :])
-    (D1, _, _, involved1) = DTW(X[0:i+1, :], Y[0:i+1, :], distfn)
-    (D2, _, _, involved2) = DTW(X[i+1::, :], Y[i+1::, :], distfn, D1[-1, -1])
-    involved = np.zeros((M, N))
+    (D1, _, _, involved1) = DTW(X[0:ci+1, :], Y[0:cj+1, :], distfn)
+    (D2, _, _, involved2) = DTW(X[ci::, :], Y[cj::, :], distfn, D1[-1, -1])
+    involved = np.zeros((M+1, N+1))
     involved[0:D1.shape[0], 0:D1.shape[1]] = involved1
-    involved[D1.shape[0]::, D1.shape[1]::] = involved2
-    D = np.inf*np.ones((M, N))
+    involved[D1.shape[0]-1::, D1.shape[1]-1::] = involved2[1::, 1::]
+    D = np.inf*np.ones((M+1, N+1))
     D[0:D1.shape[0], 0:D1.shape[1]] = D1
-    D[D1.shape[0]::, D1.shape[1]::] = D2
+    D[D1.shape[0]-1::, D1.shape[1]-1::] = D2[1::, 1::]
     return (D, CSM, None, involved)
 
 def writeChar(fout, i, j, c):
@@ -171,7 +170,8 @@ def DTWExample():
     Y[:, 0] = t2
     Y[:, 1] = np.cos(4*np.pi*t2) + t2 + 0.5
 
-    (D, CSM, backpointers, involved) = constrainedDTW(X, Y, lambda x,y: np.sqrt(np.sum((x-y)**2)), 10, 20)
+    constraint = [20, 4]
+    (D, CSM, backpointers, involved) = constrainedDTW(X, Y, lambda x,y: np.sqrt(np.sum((x-y)**2)), constraint[0], constraint[1])
     involved = involved[1::, 1::]
 
     plt.figure(figsize=(12, 12))
@@ -186,12 +186,16 @@ def DTWExample():
     I = I[involved == 1]
     for i in range(len(J)):
         plt.plot([X[I[i], 0], Y[J[i], 0]], [X[I[i], 1], Y[J[i], 1]], 'k')
+    [i, j] = [constraint[0], constraint[1]]
+    plt.plot([X[i, 0], Y[j, 0]], [X[i, 1], Y[j, 1]], 'r', linewidth=4.0)
     plt.axis('off')
-    plt.title("Curves")
+    plt.title("Curves, Cost = %.3g"%D[-1, -1])
 
     plt.subplot(223)
-    plt.imshow(CSM, interpolation = 'none', cmap=plt.get_cmap('afmhot'), aspect = 'auto')
+    plt.imshow(CSM, interpolation = 'nearest', cmap=plt.get_cmap('afmhot'), aspect = 'auto')
+    plt.hold(True)
     plt.plot(J, I, '.')
+    plt.scatter(constraint[1], constraint[0], 100, 'r')
     plt.xlim([-1, D.shape[1]])
     plt.ylim([D.shape[0], -1])
     plt.xlabel("Blue Curve")
@@ -199,7 +203,7 @@ def DTWExample():
     plt.title('Cross-Similarity Matrix')
 
     plt.subplot(224)
-    plt.imshow(D[1::, 1::], interpolation = 'none', cmap=plt.get_cmap('afmhot'), aspect = 'auto')
+    plt.imshow(D[1::, 1::], interpolation = 'nearest', cmap=plt.get_cmap('afmhot'), aspect = 'auto')
     plt.plot(J, I, '.')
     plt.xlim([-1, D.shape[1]])
     plt.ylim([D.shape[0], -1])
@@ -208,7 +212,7 @@ def DTWExample():
     plt.title("Dynamic Programming Matrix")
 
     #plt.show()
-    plt.savefig("DTWExample.pdf", bbox_inches='tight')
+    plt.savefig("DTWExample_%i_%i.svg"%(constraint[0], constraint[1]), bbox_inches='tight')
 
 if __name__ == '__main__':
     #LevenshteinExample()
