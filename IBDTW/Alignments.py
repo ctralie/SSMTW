@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import _SequenceAlignment as SAC
+import time
 
 def backtrace(backpointers, node, involved):
     optimal = False
@@ -100,6 +102,7 @@ def constrainedDTW(X, Y, distfn, ci, cj):
             CSM[i, j] = distfn(X[i, :], Y[j, :])
     (D1, _, _, involved1) = DTW(X[0:ci+1, :], Y[0:cj+1, :], distfn)
     (D2, _, _, involved2) = DTW(X[ci::, :], Y[cj::, :], distfn, D1[-1, -1])
+    D2 -= CSM[ci, cj]
     involved = np.zeros((M+1, N+1))
     involved[0:D1.shape[0], 0:D1.shape[1]] = involved1
     involved[D1.shape[0]-1::, D1.shape[1]-1::] = involved2[1::, 1::]
@@ -160,7 +163,8 @@ def DTWExample():
     np.random.seed(100)
     t1 = np.linspace(0, 1, 50)
     t1 = t1
-    t2 = np.sqrt(t1)
+    t2 = np.linspace(0, 1, 60)
+    t2 = np.sqrt(t2)
     t1 = t1**2
 
     X = np.zeros((len(t1), 2))
@@ -170,8 +174,13 @@ def DTWExample():
     Y[:, 0] = t2
     Y[:, 1] = np.cos(4*np.pi*t2) + t2 + 0.5
 
-    constraint = [20, 4]
+    constraint = [0, 0]
     (D, CSM, backpointers, involved) = constrainedDTW(X, Y, lambda x,y: np.sqrt(np.sum((x-y)**2)), constraint[0], constraint[1])
+    print "Cost Python: ", D[-1, -1]
+    tic = time.time()
+    print "Cost C: ", SAC.constrainedDTW(CSM, constraint[0], constraint[1])
+    toc = time.time()
+    print "Elapsed Time: ", toc-tic
     involved = involved[1::, 1::]
 
     plt.figure(figsize=(12, 12))
