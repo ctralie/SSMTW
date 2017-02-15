@@ -34,6 +34,7 @@ def applyRandomRigidTransformation(X):
     return CM[None, :] + np.dot(X, R) + T[None, :]
 
 def getMeanDistNeighbs(X, Kappa):
+    N = X.shape[0]
     K = int(Kappa*N)
     (D, _) = getSSM(X, N)
     Neighbs = np.partition(D, K+1, 1)[:, 0:K+1]
@@ -113,7 +114,7 @@ def makeRandomWalkCurve(res, NPoints, dim):
     #Pick a random starting point
     X = np.zeros((NPoints, dim))
     X[0, :] = np.random.choice(res, dim)
-    
+
     #Trace out a random path
     for ii in range(1, NPoints):
         prev = np.copy(X[ii-1, :])
@@ -182,7 +183,7 @@ def getTschirnhausenCubic(a, pt):
     return X
 
 #######3D Curves
-def getVirvaniFigure8(a, pt):
+def getVivianiFigure8(a, pt):
     """
     Return the curve that results from the intersection of
     a sphere of radius 2a centered at the origin and a cylinder
@@ -190,13 +191,13 @@ def getVirvaniFigure8(a, pt):
     a 2D projection of this)
     """
     N = len(pt)
-    t = 4*np.pi*pt
+    t = 4*np.pi*pt - np.pi
     X = np.zeros((N, 3))
     X[:, 0] = a*(1+np.cos(t))
     X[:, 1] = a*np.sin(t)
     X[:, 2] = 2*a*np.sin(t/2)
-    return X    
-    
+    return X
+
 
 def getTorusKnot(p, q, pt):
     """Return a p-q torus not parameterized on [0, 1]"""
@@ -221,7 +222,7 @@ def getConeHelix(c, NPeriods, pt):
     X[:, 2] = zt
     return X
 
-if __name__ == "__main__":
+if __name__ == "__main__2":
     N = 400
     t = np.linspace(0, 1, N+1)[0:N]
     Kappa = 0.1
@@ -238,13 +239,13 @@ if __name__ == "__main__":
     plt.subplot(122)
     plt.imshow(D)
     plt.show()
-    
 
-if __name__ == "__main__2":
+
+if __name__ == "__main__":
     N = 400
     t = np.linspace(0, 1, N+1)[0:N]
     Xs = {}
-    Xs['VirvaniFigure8'] = getVirvaniFigure8(0.5, t)
+    Xs['VivianiFigure8'] = getVivianiFigure8(0.5, t)
     Xs['TSCubic'] = getTschirnhausenCubic(1, t)
     Xs['TorusKnot23'] = getTorusKnot(2, 3, t)
     Xs['TorusKnot35'] = getTorusKnot(3, 5, t)
@@ -255,7 +256,7 @@ if __name__ == "__main__2":
     Xs['Epicycloid1_3'] = getEpicycloid(1.5, 0.5, t)
     Xs['Epicycloid1_4'] = getEpicycloid(2, 0.5, t)
     Xs['Epicycloid1_20'] = getEpicycloid(2, 0.1, t)
-    
+
     fig = plt.figure(figsize=(12, 6))
     for Curve in Xs:
         plt.clf()
@@ -269,9 +270,9 @@ if __name__ == "__main__2":
             plt.plot(X[:, 0], X[:, 1])
         plt.title(Curve)
         plt.subplot(122)
-        plt.imshow(SSM, interpolation = 'none')
+        plt.imshow(SSM, interpolation = 'none', cmap='afmhot')
         plt.savefig("%s.png"%Curve)
-    
+
 
 if __name__ == "__main__2":
     np.random.seed(10)
@@ -281,4 +282,3 @@ if __name__ == "__main__2":
     plt.scatter(Y[:, 0], Y[:, 1], 10, 'b')
     plt.plot(Y[:, 0], Y[:, 1], 'r')
     plt.show()
-    
