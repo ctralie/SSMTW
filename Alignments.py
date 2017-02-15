@@ -48,14 +48,22 @@ def LevDist(a, b):
     backtrace(backpointers, (M, N), involved) #Recursive backtrace from the end
     return (D, backpointers)
 
-def DTW(X, Y, distfn):
+def DTW(X, Y, distfn, initialCost = 0):
+    """
+    Implements dynamic time warping
+    :param X: An M-length time-ordered point cloud
+    :param Y: An N-length time ordered point cloud
+    :param distfn: A function to compute distances between points
+    :param initalCost: A starting cost that's inherited at the
+        beginning (can be useful when enforcing constraints)
+    """
     M = X.shape[0]
     N = Y.shape[0]
     CSM = np.zeros((M, N))
     for i in range(M):
         for j in range(N):
             CSM[i, j] = distfn(X[i, :], Y[j, :])
-            
+
     backpointers = {}
     for i in range(1, M+1):
         for j in range(1, N+1):
@@ -63,6 +71,7 @@ def DTW(X, Y, distfn):
     backpointers[(0, 0)] = []
 
     D = np.zeros((M+1, N+1))
+    D[0, 0] = initialCost
     D[1::, 0] = np.inf
     D[0, 1::] = np.inf
     for i in range(1, M+1):
@@ -81,6 +90,24 @@ def DTW(X, Y, distfn):
     involved = np.zeros((M+1, N+1))
     backtrace(backpointers, (M, N), involved) #Recursive backtrace from the end
     return (D, CSM, backpointers, involved)
+
+def constrainedDTW(X, Y, distfn, i, j):
+    print "Constraint: (%i, %i)"%(i, j)
+    M = X.shape[0]
+    N = Y.shape[0]
+    CSM = np.zeros((M, N))
+    for i in range(M):
+        for j in range(N):
+            CSM[i, j] = distfn(X[i, :], Y[j, :])
+    (D1, _, _, involved1) = DTW(X[0:i+1, :], Y[0:i+1, :], distfn)
+    (D2, _, _, involved2) = DTW(X[i+1::, :], Y[i+1::, :], distfn, D1[-1, -1])
+    involved = np.zeros((M, N))
+    involved[0:D1.shape[0], 0:D1.shape[1]] = involved1
+    involved[D1.shape[0]::, D1.shape[1]::] = involved2
+    D = np.inf*np.ones((M, N))
+    D[0:D1.shape[0], 0:D1.shape[1]] = D1
+    D[D1.shape[0]::, D1.shape[1]::] = D2
+    return (D, CSM, None, involved)
 
 def writeChar(fout, i, j, c):
     fout.write("\\node at (%g, %g) {%s};\n"%(j+0.5, i+0.5, c))
@@ -109,22 +136,22 @@ def LevenshteinExample():
     fout = open("levfig.tex", "w")
     fout.write("\\begin{tikzpicture}")
     fout.write("\\draw [help lines] (0, 0) grid (%i,%i);\n"%(N+2, M+2))
-    
+
     writeChar(fout, M, 0, '\\_')
     for i in range(M):
         writeChar(fout, M-(i+1), 0, a[i])
-        
+
     writeChar(fout, M+1, 1, '\\_')
     for j in range(N):
         writeChar(fout, M+1, j+2, b[j])
-    
+
     for i in range(M+1):
         for j in range(N+1):
             if i == M and j == N:
                 continue
             writeChar(fout, M-i, j+1, int(D[i, j]))
     writeChar(fout, 0, N+1, int(D[-1, -1]))
-    
+
     drawPointers(fout, backpointers, M, N)
     fout.write("\\end{tikzpicture}")
     fout.close()
@@ -136,17 +163,17 @@ def DTWExample():
     t1 = t1
     t2 = np.sqrt(t1)
     t1 = t1**2
-    
+
     X = np.zeros((len(t1), 2))
     X[:, 0] = t1
     X[:, 1] = np.cos(4*np.pi*t1) + t1
     Y = np.zeros((len(t2), 2))
     Y[:, 0] = t2
     Y[:, 1] = np.cos(4*np.pi*t2) + t2 + 0.5
-    
-    (D, CSM, backpointers, involved) = DTW(X, Y, lambda x,y: np.sqrt(np.sum((x-y)**2)))
+
+    (D, CSM, backpointers, involved) = constrainedDTW(X, Y, lambda x,y: np.sqrt(np.sum((x-y)**2)), 10, 20)
     involved = involved[1::, 1::]
-    
+
     plt.figure(figsize=(12, 12))
     plt.subplot2grid((2, 2), (0, 0), colspan=2)
     plt.scatter(X[:, 0], X[:, 1], 20, 'r')
@@ -161,7 +188,7 @@ def DTWExample():
         plt.plot([X[I[i], 0], Y[J[i], 0]], [X[I[i], 1], Y[J[i], 1]], 'k')
     plt.axis('off')
     plt.title("Curves")
-    
+
     plt.subplot(223)
     plt.imshow(CSM, interpolation = 'none', cmap=plt.get_cmap('afmhot'), aspect = 'auto')
     plt.plot(J, I, '.')
@@ -170,7 +197,7 @@ def DTWExample():
     plt.xlabel("Blue Curve")
     plt.ylabel("Red Curve")
     plt.title('Cross-Similarity Matrix')
-    
+
     plt.subplot(224)
     plt.imshow(D[1::, 1::], interpolation = 'none', cmap=plt.get_cmap('afmhot'), aspect = 'auto')
     plt.plot(J, I, '.')
@@ -179,10 +206,10 @@ def DTWExample():
     plt.xlabel("Blue Curve")
     plt.ylabel("Red Curve")
     plt.title("Dynamic Programming Matrix")
-    
+
     #plt.show()
     plt.savefig("DTWExample.pdf", bbox_inches='tight')
 
 if __name__ == '__main__':
-    LevenshteinExample()
+    #LevenshteinExample()
     DTWExample()
