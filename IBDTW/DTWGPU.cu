@@ -6,6 +6,7 @@ __global__ void DTW(float* CSM, float* D, int M, int N, int diagLen, int diagLen
     //Have circularly rotating system of 3 buffers
     extern __shared__ float x[]; //Circular buffer
     int off = 0;
+    int upoff = 0;
 
     //Other local variables
     int i, k;
@@ -33,9 +34,11 @@ __global__ void DTW(float* CSM, float* D, int M, int N, int diagLen, int diagLen
         //Figure out the bounds of this diagonal
         i1 = i;
         j1 = 0;
+        upoff = -1;
         if (i1 >= M) {
             i1 = M-1;
             j1 = i - (M-1);
+            upoff = 0;
         }
         j2 = i;
         i2 = 0;
@@ -58,20 +61,22 @@ __global__ void DTW(float* CSM, float* D, int M, int N, int diagLen, int diagLen
             val = CSM[thisi*N + thisj];
             score = -1;
             //Above
-            if (x[((off+1)%3)*diagLen + idx] > -1) {
-                score = val + x[((off+1)%3)*diagLen + threadIdx.x];
+            if (idx + upoff < N + M - 1) {
+                if (x[((off+1)%3)*diagLen + idx + upoff + 1] > -1) {
+                    score = val + x[((off+1)%3)*diagLen + idx + upoff + 1];
+                }
             }
-            if (idx > 0) {
+            if (idx + upoff >= 0) {
                 //Left
-                if (x[((off+1)%3)*diagLen + idx - 1] > -1) {
-                    if (score == -1 || x[((off+1)%3)*diagLen + idx - 1] + val < score) {
-                        score = x[((off+1)%3)*diagLen + idx - 1] + val;
+                if (x[((off+1)%3)*diagLen + idx + upoff] > -1) {
+                    if (score == -1 || x[((off+1)%3)*diagLen + idx + upoff] + val < score) {
+                        score = x[((off+1)%3)*diagLen + idx + upoff] + val;
                     }
                 }
                 //Diagonal
-                if (x[((off+2)%3)*diagLen + idx - 1] > -1) {
-                    if (score == -1 || x[((off+2)%3)*diagLen + idx - 1] + val < score) {
-                        score = x[((off+2)%3)*diagLen + idx - 1] + val;
+                if (x[((off+2)%3)*diagLen + idx + upoff] > -1) {
+                    if (score == -1 || x[((off+2)%3)*diagLen + idx + upoff] + val < score) {
+                        score = x[((off+2)%3)*diagLen + idx + upoff] + val;
                     }
                 }
             }
@@ -84,7 +89,7 @@ __global__ void DTW(float* CSM, float* D, int M, int N, int diagLen, int diagLen
                 res[0] = score;
             }
         }
-        off = (off + 4) % 3; //Cycle buffers
+        off = (off + 2) % 3; //Cycle buffers
         __syncthreads();
     }
 }

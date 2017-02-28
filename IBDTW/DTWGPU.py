@@ -58,9 +58,9 @@ def doDTW(CSM):
 if __name__ == '__main__':
     initParallelAlgorithms()
     np.random.seed(100)
-    t1 = np.linspace(0, 1, 50)
+    t1 = np.linspace(0, 1, 400)
     t1 = t1
-    t2 = np.linspace(0, 1, 60)
+    t2 = np.linspace(0, 1, 500)
     #t2 = np.sqrt(t2)
     #t1 = t1**2
 
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     Y[:, 0] = t2
     Y[:, 1] = np.cos(4*np.pi*t2) + t2 + 0.5
 
-    (DCPU, CSM, backpointers, involved) = DTW(X, Y, lambda x,y: np.sqrt(np.sum((x-y)**2)))
+    (DCPU, CSM, backpointers, involved) = DTW(X, Y, lambda x,y: np.sqrt(np.sum((np.array(x, dtype=np.float32)-np.array(y, dtype=np.float32))**2)))
     DCPU = DCPU[1::, 1::]
     resCPU = DCPU[-1, -1]
     CSM = np.array(CSM, dtype = np.float32)
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     diff = DCPU - DGPU
     plt.imshow(diff, cmap='afmhot')
     plt.subplot(224)
-    plt.imshow(np.abs(diff) < 1e-5)
+    plt.imshow(np.abs(diff) < 1e-4)
     plt.show()
 
     sio.savemat("D.mat", {"D":DGPU})
