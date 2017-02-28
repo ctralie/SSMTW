@@ -13,7 +13,7 @@ double tripleMin(double a, double b, double c) {
     return min;
 }
 
-double DTW(double* S, int M, int N, float initialCost, int i1, int j1, int i2, int j2) {
+double DTW(double* S, int M, int N, int i1, int j1, int i2, int j2) {
     double* D;
     int i, j;
     double d, dul, dl, du;
@@ -28,7 +28,7 @@ double DTW(double* S, int M, int N, float initialCost, int i1, int j1, int i2, i
         //Fill first column with infinity
         D[i*B] = FLT_MAX;
     }
-    D[0] = initialCost;
+    D[0] = 0.0;
     for (i = 1; i < A; i++) {
         for (j = 1; j < B; j++) {
             d = S[(i1+i-1)*N + (j1+j-1)];
@@ -44,8 +44,6 @@ double DTW(double* S, int M, int N, float initialCost, int i1, int j1, int i2, i
 }
 
 double constrainedDTW(double* S, int M, int N, int ci, int cj) {
-    double ret = DTW(S, M, N, 0.0, 0, 0, ci, cj);
-    //return ret + DTW(S, M, N, ret, ci, cj, M-1, N-1);
-    //return ret - S[ci*N+cj];
-    return ret + DTW(S, M, N, ret, ci, cj, M-1, N-1) - S[ci*N+cj];
+    double ret = DTW(S, M, N, 0, 0, ci, cj);
+    return ret + DTW(S, M, N, ci, cj, M-1, N-1) - S[ci*N+cj];
 }

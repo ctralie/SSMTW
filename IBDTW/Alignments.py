@@ -49,14 +49,12 @@ def LevDist(a, b):
     backtrace(backpointers, (M, N), involved) #Recursive backtrace from the end
     return (D, backpointers)
 
-def DTW(X, Y, distfn, initialCost = 0):
+def DTW(X, Y, distfn):
     """
     Implements dynamic time warping
     :param X: An M-length time-ordered point cloud
     :param Y: An N-length time ordered point cloud
     :param distfn: A function to compute distances between points
-    :param initalCost: A starting cost that's inherited at the
-        beginning (can be useful when enforcing constraints)
     """
     M = X.shape[0]
     N = Y.shape[0]
@@ -72,7 +70,7 @@ def DTW(X, Y, distfn, initialCost = 0):
     backpointers[(0, 0)] = []
 
     D = np.zeros((M+1, N+1))
-    D[0, 0] = initialCost
+    D[0, 0] = 0
     D[1::, 0] = np.inf
     D[0, 1::] = np.inf
     for i in range(1, M+1):
@@ -101,8 +99,8 @@ def constrainedDTW(X, Y, distfn, ci, cj):
         for j in range(N):
             CSM[i, j] = distfn(X[i, :], Y[j, :])
     (D1, _, _, involved1) = DTW(X[0:ci+1, :], Y[0:cj+1, :], distfn)
-    (D2, _, _, involved2) = DTW(X[ci::, :], Y[cj::, :], distfn, D1[-1, -1])
-    D2 -= CSM[ci, cj]
+    (D2, _, _, involved2) = DTW(X[ci::, :], Y[cj::, :], distfn)
+    D2 = D2 - CSM[ci, cj] + D1[-1, -1]
     involved = np.zeros((M+1, N+1))
     involved[0:D1.shape[0], 0:D1.shape[1]] = involved1
     involved[D1.shape[0]-1::, D1.shape[1]-1::] = involved2[1::, 1::]
@@ -164,8 +162,8 @@ def DTWExample():
     t1 = np.linspace(0, 1, 50)
     t1 = t1
     t2 = np.linspace(0, 1, 60)
-    t2 = np.sqrt(t2)
-    t1 = t1**2
+    #t2 = np.sqrt(t2)
+    #t1 = t1**2
 
     X = np.zeros((len(t1), 2))
     X[:, 0] = t1
@@ -174,7 +172,10 @@ def DTWExample():
     Y[:, 0] = t2
     Y[:, 1] = np.cos(4*np.pi*t2) + t2 + 0.5
 
-    constraint = [0, 0]
+    (D, CSM, backpointers, involved) = DTW(X, Y, lambda x,y: np.sqrt(np.sum((x-y)**2)))
+    print "Unconstrained DTW: ", D[-1, -1]
+
+    constraint = [20, 30]
     (D, CSM, backpointers, involved) = constrainedDTW(X, Y, lambda x,y: np.sqrt(np.sum((x-y)**2)), constraint[0], constraint[1])
     print "Cost Python: ", D[-1, -1]
     tic = time.time()
@@ -196,7 +197,7 @@ def DTWExample():
     for i in range(len(J)):
         plt.plot([X[I[i], 0], Y[J[i], 0]], [X[I[i], 1], Y[J[i], 1]], 'k')
     [i, j] = [constraint[0], constraint[1]]
-    plt.plot([X[i, 0], Y[j, 0]], [X[i, 1], Y[j, 1]], 'r', linewidth=4.0)
+    plt.scatter([X[i, 0], Y[j, 0]], [X[i, 1], Y[j, 1]], 100, color = '#00ff00', edgecolor = 'k')
     plt.axis('off')
     plt.title("Curves, Cost = %.3g"%D[-1, -1])
 
@@ -204,7 +205,7 @@ def DTWExample():
     plt.imshow(CSM, interpolation = 'nearest', cmap=plt.get_cmap('afmhot'), aspect = 'auto')
     plt.hold(True)
     plt.plot(J, I, '.')
-    plt.scatter(constraint[1], constraint[0], 100, 'r')
+    plt.scatter(constraint[1], constraint[0], 100, color = '#00ff00', edgecolor = 'k')
     plt.xlim([-1, D.shape[1]])
     plt.ylim([D.shape[0], -1])
     plt.xlabel("Blue Curve")

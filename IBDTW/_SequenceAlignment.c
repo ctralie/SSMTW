@@ -60,7 +60,7 @@ static PyObject *SequenceAlignment_dtw(PyObject *self, PyObject *args)
     double *S    = (double*)PyArray_DATA(S_array);
 
     /* Perform DTW */
-    double score = DTW(S, M, N, 0.0, 0, 0, M-1, N-1);
+    double score = DTW(S, M, N, 0, 0, M-1, N-1);
 
     /* Clean up. */
     Py_DECREF(S_array);

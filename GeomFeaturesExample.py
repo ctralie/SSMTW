@@ -16,6 +16,7 @@ from SyntheticCurves import *
 import scipy.sparse
 import scipy.sparse.linalg as slinalg
 from TDA import *
+from fake_parula import *
 
 """
 Curve                                              Velocity/Curvature/Torsion
@@ -64,12 +65,12 @@ def getD2(D, D2Samples, hmax):
 
 if __name__ == '__main__':
     sigma = 2
-    Kappa = 0.1
+    Kappa = 0.06
     plt.figure(figsize=(16, 16))
     N = 400
     t = np.linspace(0, 1, N+1)[0:N]
-    #X = getTorusKnot(3, 5, t); doRotate = False
-    X = getVivianiFigure8(1, t); doRotate = False
+    X = getTorusKnot(3, 5, t); doRotate = False
+    #X = getVivianiFigure8(1, t); doRotate = False
     
     if doRotate:
         np.random.seed(6)
@@ -80,7 +81,7 @@ if __name__ == '__main__':
 
     plt.clf()
     (SSM, _) = getSSM(X, N)
-    ax = plt.subplot2grid((3, 3), (0, 0), rowspan=2, projection='3d')
+    ax = plt.subplot2grid((3, 3), (0, 0), colspan=2, projection='3d')
     c = plt.get_cmap('Spectral')
     C = c(np.array(np.round(np.linspace(0, 255, X.shape[0])), dtype=np.int32))
     C = C[:, 0:3]
@@ -91,7 +92,7 @@ if __name__ == '__main__':
 
     plt.title("Viviani Figure 8, %i Samples"%N)
     #plt.title("3-5 Torus Knot, %i Samples"%N)
-    plt.subplot(332)
+    plt.subplot(334)
     plt.imshow(SSM, cmap='afmhot')
     plt.title("SSM")
 
@@ -161,5 +162,5 @@ if __name__ == '__main__':
     plt.legend(handles=[H12, H13])
     plt.title("Persistence Diagram 1D Rips")
     
-    plt.savefig("VivianiFigure8.svg", dpi=150, bbox_inches='tight')
-    #plt.savefig("TorusKnot35.svg", dpi=150, bbox_inches='tight')
+    #plt.savefig("VivianiFigure8.svg", dpi=150, bbox_inches='tight')
+    plt.savefig("TorusKnot35.svg", dpi=150, bbox_inches='tight')
