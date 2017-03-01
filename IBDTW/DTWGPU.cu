@@ -2,7 +2,9 @@
 How much of a difference would it make if I stored the buffers in global memory?
 */
 
-__global__ void DTW(float* CSM, float* D, int M, int N, int diagLen, int diagLenPow2, float* res) {
+//__global__ void DTW(float* CSM, float* D, float* U, float* L, float* UL, int M, int N, int diagLen, int diagLenPow2, float* res) {
+
+__global__ void DTW(float* CSM, int M, int N, int diagLen, int diagLenPow2, float* res) {
     //Have circularly rotating system of 3 buffers
     extern __shared__ float x[]; //Circular buffer
     int off = 0;
@@ -24,7 +26,9 @@ __global__ void DTW(float* CSM, float* D, int M, int N, int diagLen, int diagLen
     //Initialize all buffer elements to -1
     for (k = 0; k < K; k++) {
         for (off = 0; off < 3; off++) {
-            x[512*k + threadIdx.x + off*diagLen] = -1;
+            if (512*k + threadIdx.x < diagLen) {
+                x[512*k + threadIdx.x + off*diagLen] = -1;
+            }
         }
     }
     off = 0;
@@ -61,30 +65,38 @@ __global__ void DTW(float* CSM, float* D, int M, int N, int diagLen, int diagLen
             val = CSM[thisi*N + thisj];
             score = -1;
             //Above
-            if (idx + upoff < N + M - 1) {
+            if (idx + upoff + 1 < N + M - 1 && thisi > 0) {
                 if (x[((off+1)%3)*diagLen + idx + upoff + 1] > -1) {
                     score = val + x[((off+1)%3)*diagLen + idx + upoff + 1];
                 }
+                //U[thisi*N + thisj] = x[((off+1)%3)*diagLen + idx + upoff + 1];
             }
-            if (idx + upoff >= 0) {
+            if (idx + upoff >= 0 && thisj > 0) {
                 //Left
                 if (x[((off+1)%3)*diagLen + idx + upoff] > -1) {
                     if (score == -1 || x[((off+1)%3)*diagLen + idx + upoff] + val < score) {
                         score = x[((off+1)%3)*diagLen + idx + upoff] + val;
                     }
                 }
+                //L[thisi*N + thisj] = x[((off+1)%3)*diagLen + idx + upoff];
+            }
+            if (i1 == M-1 && j1 > 1) {
+                upoff = 1;
+            }
+            if (idx + upoff >= 0 && thisi > 0) {
                 //Diagonal
                 if (x[((off+2)%3)*diagLen + idx + upoff] > -1) {
                     if (score == -1 || x[((off+2)%3)*diagLen + idx + upoff] + val < score) {
                         score = x[((off+2)%3)*diagLen + idx + upoff] + val;
                     }
                 }
+                //UL[thisi*N + thisj] = x[((off+2)%3)*diagLen + idx + upoff];
             }
             if (score == -1) {
                 score = val;
             }
-            D[thisi*N + thisj] = score;
-            x[off*diagLen + threadIdx.x] = score;
+            //D[thisi*N + thisj] = score;
+            x[off*diagLen + idx] = score;
             if (i == N + M - 2) {
                 res[0] = score;
             }

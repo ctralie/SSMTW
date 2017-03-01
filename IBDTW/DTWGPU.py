@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import time
 import scipy.io as sio
 from Alignments import *
+import _SequenceAlignment as SAC
 
 from pycuda.compiler import SourceModule
 
@@ -41,25 +42,25 @@ def doDTW(CSM):
     #for this scheme to fit in memory
     M = CSM.shape[0]
     N = CSM.shape[1]
-    D = np.zeros((M, N), dtype=np.float32)
-    D = gpuarray.to_gpu(D)
+
     diagLen = np.array(min(M, N), dtype = np.int32)
     diagLenPow2 = roundUpPow2(diagLen)
+    print "diagLenPow2 = ", diagLenPow2
     NThreads = min(diagLen, 512)
     res = gpuarray.to_gpu(np.array([0.0], dtype=np.float32))
     M = np.array(M, dtype=np.int32)
     N = np.array(N, dtype=np.int32)
     tic = time.time()
-    DTW_(CSM, D, M, N, diagLen, diagLenPow2, res, block=(int(NThreads), 1, 1), grid=(1, 1), shared=12*diagLen)
-    print "Elapsed Time: ", time.time() - tic
-    return (D.get(), res.get()[0])
+    DTW_(CSM, M, N, diagLen, diagLenPow2, res, block=(int(NThreads), 1, 1), grid=(1, 1), shared=12*diagLen)
+    print "Elapsed Time GPU: ", time.time() - tic
+
+    return res.get()[0]
 
 
 if __name__ == '__main__':
     initParallelAlgorithms()
-    np.random.seed(100)
-    t1 = np.linspace(0, 1, 400)
-    t1 = t1
+    t1 = np.linspace(0, 1, 500)
+    t1 = np.sqrt(t1)
     t2 = np.linspace(0, 1, 500)
     #t2 = np.sqrt(t2)
     #t1 = t1**2
@@ -71,25 +72,23 @@ if __name__ == '__main__':
     Y[:, 0] = t2
     Y[:, 1] = np.cos(4*np.pi*t2) + t2 + 0.5
 
-    (DCPU, CSM, backpointers, involved) = DTW(X, Y, lambda x,y: np.sqrt(np.sum((np.array(x, dtype=np.float32)-np.array(y, dtype=np.float32))**2)))
-    DCPU = DCPU[1::, 1::]
-    resCPU = DCPU[-1, -1]
+    tic = time.time()
+    # (DCPU, CSM, backpointers, involved) = DTW(X, Y, lambda x,y: np.sqrt(np.sum((np.array(x, dtype=np.float32)-np.array(y, dtype=np.float32))**2)))
+    # print "Elapsed Time Python: ", time.time() - tic
+    # DCPU = DCPU[1::, 1::]
+    # resPython = DCPU[-1, -1]
+    resPython = 0
+    CSM = getCSM(X, Y)
+
+    tic = time.time()
+    resC = SAC.DTW(CSM)
+    print "Elapsed Time C: ", time.time() - tic
+
     CSM = np.array(CSM, dtype = np.float32)
     CSM = gpuarray.to_gpu(CSM)
-    (DGPU, resGPU) = doDTW(CSM)
+    resGPU = doDTW(CSM)
 
-    plt.subplot(221)
-    plt.imshow(DCPU, cmap='afmhot')
-    plt.subplot(222)
-    plt.imshow(DGPU, cmap='afmhot')
-    plt.subplot(223)
-    diff = DCPU - DGPU
-    plt.imshow(diff, cmap='afmhot')
-    plt.subplot(224)
-    plt.imshow(np.abs(diff) < 1e-4)
-    plt.show()
 
-    sio.savemat("D.mat", {"D":DGPU})
-
-    print "CPU Result: %g"%resCPU
+    print "Python Result: %g"%resPython
+    print "C Result: %g"%resC
     print "GPU Result: %g"%resGPU
