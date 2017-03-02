@@ -49,20 +49,10 @@ def LevDist(a, b):
     backtrace(backpointers, (M, N), involved) #Recursive backtrace from the end
     return (D, backpointers)
 
-def DTW(X, Y, distfn):
-    """
-    Implements dynamic time warping
-    :param X: An M-length time-ordered point cloud
-    :param Y: An N-length time ordered point cloud
-    :param distfn: A function to compute distances between points
-    """
-    M = X.shape[0]
-    N = Y.shape[0]
-    CSM = np.zeros((M, N))
-    for i in range(M):
-        for j in range(N):
-            CSM[i, j] = distfn(X[i, :], Y[j, :])
 
+def DTWCSM(CSM):
+    M = CSM.shape[0]
+    N = CSM.shape[1]
     backpointers = {}
     for i in range(1, M+1):
         for j in range(1, N+1):
@@ -89,6 +79,22 @@ def DTW(X, Y, distfn):
     involved = np.zeros((M+1, N+1))
     backtrace(backpointers, (M, N), involved) #Recursive backtrace from the end
     return (D, CSM, backpointers, involved)
+
+def DTW(X, Y, distfn):
+    """
+    Implements dynamic time warping
+    :param X: An M-length time-ordered point cloud
+    :param Y: An N-length time ordered point cloud
+    :param distfn: A function to compute distances between points
+    """
+    M = X.shape[0]
+    N = Y.shape[0]
+    CSM = np.zeros((M, N))
+    for i in range(M):
+        for j in range(N):
+            CSM[i, j] = distfn(X[i, :], Y[j, :])
+    return DTWCSM(CSM)
+
 
 def constrainedDTW(X, Y, distfn, ci, cj):
     print "Constraint: (%i, %i)"%(ci, cj)
@@ -125,6 +131,22 @@ def drawPointers(fout, backpointers, M, N):
                 fout.write("\\draw [thick, ->, %s] (%g, %g) -- (%g, %g);\n"%(color, s[0], s[1], s[0], M-P[0]+0.2))
             else: #Diagonal Arrow
                 fout.write("\\draw [thick, ->, %s] (%g, %g) -- (%g, %g);\n"%(color, s[0], s[1], P[1]+1.6, M-P[0]+0.2))
+
+def doIBDTW(SSMA, SSMB):
+    M = SSMA.shape[0]
+    N = SSMB.shape[0]
+    D = np.zeros((M, N))
+    for i in range(M):
+        print "Finished row %i of %i"%(i, M)
+        for j in range(N):
+            row = SSMA[i, :]
+            col = SSMB[:, j]
+            CSM = np.zeros((len(row), len(col)))
+            CSM = CSM + row[:, None]
+            CSM = CSM - col[None, :]
+            CSM = np.abs(CSM)
+            D[i, j] = SAC.constrainedDTW(CSM, i, j)
+    return D
 
 def LevenshteinExample():
     #Make Levenshtein Example

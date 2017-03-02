@@ -30,7 +30,7 @@ def applyRandomRigidTransformation(X):
     #Make a random rotation matrix
     R = np.random.randn(dim, dim)
     R, S, V = np.linalg.svd(R)
-    T = np.std(X)*np.random.randn(1, dim)
+    T = np.std(X)*np.random.randn(dim)
     return CM[None, :] + np.dot(X, R) + T[None, :]
 
 def getMeanDistNeighbs(X, Kappa):

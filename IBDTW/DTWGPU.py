@@ -37,7 +37,7 @@ def getCSM(X, Y):
     C[C < 0] = 0
     return np.sqrt(C)
 
-def doDTW(CSM):
+def doDTWGPU(CSM, ci, cj):
     #Minimum dimension of array can be at max size 1024
     #for this scheme to fit in memory
     M = CSM.shape[0]
@@ -50,18 +50,21 @@ def doDTW(CSM):
     res = gpuarray.to_gpu(np.array([0.0], dtype=np.float32))
     M = np.array(M, dtype=np.int32)
     N = np.array(N, dtype=np.int32)
+    ci = np.array(ci, dtype = np.int32)
+    cj = np.array(cj, dtype = np.int32)
     tic = time.time()
-    DTW_(CSM, M, N, diagLen, diagLenPow2, res, block=(int(NThreads), 1, 1), grid=(1, 1), shared=12*diagLen)
+    DTW_(CSM, M, N, ci, cj, diagLen, diagLenPow2, res, block=(int(NThreads), 1, 1), grid=(1, 1), shared=12*diagLen)
+    ret = res.get()[0]
     print "Elapsed Time GPU: ", time.time() - tic
-
-    return res.get()[0]
-
+    return ret
 
 if __name__ == '__main__':
     initParallelAlgorithms()
     t1 = np.linspace(0, 1, 500)
     t1 = np.sqrt(t1)
     t2 = np.linspace(0, 1, 500)
+    ci = 100
+    cj = 20
     #t2 = np.sqrt(t2)
     #t1 = t1**2
 
@@ -73,20 +76,19 @@ if __name__ == '__main__':
     Y[:, 1] = np.cos(4*np.pi*t2) + t2 + 0.5
 
     tic = time.time()
-    # (DCPU, CSM, backpointers, involved) = DTW(X, Y, lambda x,y: np.sqrt(np.sum((np.array(x, dtype=np.float32)-np.array(y, dtype=np.float32))**2)))
+    (DCPU, CSM, backpointers, involved) = constrainedDTW(X, Y, lambda x,y: np.sqrt(np.sum((np.array(x, dtype=np.float32)-np.array(y, dtype=np.float32))**2)), ci, cj)
     # print "Elapsed Time Python: ", time.time() - tic
     # DCPU = DCPU[1::, 1::]
-    # resPython = DCPU[-1, -1]
-    resPython = 0
+    resPython = DCPU[-1, -1]
     CSM = getCSM(X, Y)
 
     tic = time.time()
-    resC = SAC.DTW(CSM)
+    resC = SAC.constrainedDTW(CSM, ci, cj)
     print "Elapsed Time C: ", time.time() - tic
 
     CSM = np.array(CSM, dtype = np.float32)
     CSM = gpuarray.to_gpu(CSM)
-    resGPU = doDTW(CSM)
+    resGPU = doDTWGPU(CSM, ci, cj)
 
 
     print "Python Result: %g"%resPython

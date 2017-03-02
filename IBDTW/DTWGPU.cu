@@ -4,7 +4,7 @@ How much of a difference would it make if I stored the buffers in global memory?
 
 //__global__ void DTW(float* CSM, float* D, float* U, float* L, float* UL, int M, int N, int diagLen, int diagLenPow2, float* res) {
 
-__global__ void DTW(float* CSM, int M, int N, int diagLen, int diagLenPow2, float* res) {
+__global__ void DTW(float* CSM, int M, int N, int ci, int cj, int diagLen, int diagLenPow2, float* res) {
     //Have circularly rotating system of 3 buffers
     extern __shared__ float x[]; //Circular buffer
     int off = 0;
@@ -62,6 +62,10 @@ __global__ void DTW(float* CSM, int M, int N, int diagLen, int diagLenPow2, floa
                 x[off*diagLen + idx] = -1;
                 continue;
             }
+            if (!((thisi <= ci && thisj <= cj) || (thisi >= ci && thisj >= cj))) {
+                x[off*diagLen + idx] = -1;
+                continue;
+            }
             val = CSM[thisi*N + thisj];
             score = -1;
             //Above
@@ -83,19 +87,20 @@ __global__ void DTW(float* CSM, int M, int N, int diagLen, int diagLenPow2, floa
             if (i1 == M-1 && j1 > 1) {
                 upoff = 1;
             }
-            if (idx + upoff >= 0 && thisi > 0) {
-                //Diagonal
-                if (x[((off+2)%3)*diagLen + idx + upoff] > -1) {
-                    if (score == -1 || x[((off+2)%3)*diagLen + idx + upoff] + val < score) {
-                        score = x[((off+2)%3)*diagLen + idx + upoff] + val;
+            if (!((thisi == ci && thisj == cj + 1) || (thisi == ci + 1 && thisj == cj))) {
+                if (idx + upoff >= 0 && thisi > 0) {
+                    //Diagonal
+                    if (x[((off+2)%3)*diagLen + idx + upoff] > -1) {
+                        if (score == -1 || x[((off+2)%3)*diagLen + idx + upoff] + val < score) {
+                            score = x[((off+2)%3)*diagLen + idx + upoff] + val;
+                        }
                     }
+                    //UL[thisi*N + thisj] = x[((off+2)%3)*diagLen + idx + upoff];
                 }
-                //UL[thisi*N + thisj] = x[((off+2)%3)*diagLen + idx + upoff];
             }
             if (score == -1) {
                 score = val;
             }
-            //D[thisi*N + thisj] = score;
             x[off*diagLen + idx] = score;
             if (i == N + M - 2) {
                 res[0] = score;
