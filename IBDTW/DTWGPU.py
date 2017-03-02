@@ -60,12 +60,15 @@ def doDTWGPU(CSM, ci, cj):
     print "Elapsed Time GPU: ", time.time() - tic
     return ret
 
-def doIBDTWGPU(pSSMA, pSSMB):
-    M = pSSMA.shape[0]
-    N = pSSMB.shape[0]
-    SSMA = gpuarray.to_gpu(np.array(pSSMA, dtype = np.float32))
-    SSMB = gpuarray.to_gpu(np.array(pSSMB, dtype = np.float32))
-
+def doIBDTWGPU(SSMA, SSMB, returnCSM = False, printElapsedTime = False):
+    """
+    :param SSMA: MxM self-similarity matrix of first curve (gpuarray)
+    :param SSMB: NxN self-similarity matrix of second curve (gpuarray)
+    :param returnCSM: If True, return the CSM.  If false, just return the final cost
+    :param printElapsedTime: Print the elapsed time
+    """
+    M = SSMA.shape[0]
+    N = SSMB.shape[0]
 
     CSM = np.zeros((M, N), dtype=np.float32)
     CSM = gpuarray.to_gpu(CSM)
@@ -79,9 +82,13 @@ def doIBDTWGPU(pSSMA, pSSMB):
     tic = time.time()
 
     DTWSSM_(SSMA, SSMB, CSM, M, N, diagLen, diagLenPow2, block=(int(NThreads), 1, 1), grid=(int(M), int(N)), shared=12*diagLen)
-    print "Elapsed Time GPU: ", time.time() - tic
-    return CSM.get()
-
+    if returnCSM:
+        return CSM.get()
+    else:
+        res = doDTWGPU(CSM, 0, 0)
+        if printElapsedTime:
+            print "Elapsed Time GPU: ", time.time() - tic
+        return res
 
 if __name__ == '__main__':
     initParallelAlgorithms()

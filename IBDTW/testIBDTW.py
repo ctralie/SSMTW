@@ -13,8 +13,8 @@ from DTWGPU import *
 if __name__ == '__main__':
     initParallelAlgorithms()
     np.random.seed(100)
-    M = 500
-    N = 500
+    M = 200
+    N = 200
     t1 = np.linspace(0, 1, M)
     t2 = np.linspace(0, 1, N)
     t2 = t2**2
@@ -28,14 +28,19 @@ if __name__ == '__main__':
     NBumps = 3
     #(Y, Bumps) = addRandomBumps(Y, Kappa, NRelMag, NBumps)
 
-    SSMX = getCSM(X, X)
-    SSMY = getCSM(Y, Y)
+    SSMX = np.array(getCSM(X, X), dtype=np.float32)
+    SSMY = np.array(getCSM(Y, Y), dtype=np.float32)
     tic = time.time()
     D = doIBDTW(SSMX, SSMY)
     print "Elapsed Time CPU: ", time.time() - tic
-    D2 = doIBDTWGPU(SSMX, SSMY)
+    gSSMX = gpuarray.to_gpu(np.array(SSMX, dtype = np.float32))
+    gSSMY = gpuarray.to_gpu(np.array(SSMY, dtype = np.float32))
+    CSM = np.zeros((M, N), dtype=np.float32)
+    CSM = gpuarray.to_gpu(CSM)
+    D2 = doIBDTWGPU(gSSMX, gSSMY, True, True)
+    resGPU = doIBDTWGPU(gSSMX, gSSMY, False, True)
 
-    sio.savemat("D.mat", {"D":D, "D2":D2})
+    #sio.savemat("D.mat", {"D":D, "D2":D2})
 
     plt.subplot(131)
     plt.imshow(D, cmap = 'afmhot')
@@ -45,10 +50,10 @@ if __name__ == '__main__':
     plt.imshow(D - D2, cmap = 'afmhot')
     plt.show()
 
-
-
     (DAll, CSM, backpointers, involved) = DTWCSM(D)
-    cost = DAll[-1, -1]
+    resCPU = DAll[-1, -1]
+    print "GPU Result: ", resGPU
+    print "CPU Result: ", resCPU
 
     c = plt.get_cmap('Spectral')
     C1 = c(np.array(np.round(255*np.arange(M)/float(M)), dtype=np.int32))
@@ -73,7 +78,7 @@ if __name__ == '__main__':
     plt.scatter(J, I, 20, 'c', edgecolor = 'none')
     plt.xlim([0, CSM.shape[1]])
     plt.ylim([CSM.shape[0], 0])
-    plt.title("Cost = %g"%cost)
+    plt.title("Cost = %g"%resGPU)
 
     plt.subplot(224)
     plt.scatter(X[:, 0], X[:, 1], 20, c=C1, edgecolor='none')
