@@ -8,11 +8,13 @@ sys.path.append('../GeometricCoverSongs/SequenceAlignment')
 from CSMSSMTools import *
 from SyntheticCurves import *
 from Alignments import *
+from DTWGPU import *
 
 if __name__ == '__main__':
+    initParallelAlgorithms()
     np.random.seed(100)
-    M = 200
-    N = 200
+    M = 500
+    N = 500
     t1 = np.linspace(0, 1, M)
     t2 = np.linspace(0, 1, N)
     t2 = t2**2
@@ -28,7 +30,22 @@ if __name__ == '__main__':
 
     SSMX = getCSM(X, X)
     SSMY = getCSM(Y, Y)
+    tic = time.time()
     D = doIBDTW(SSMX, SSMY)
+    print "Elapsed Time CPU: ", time.time() - tic
+    D2 = doIBDTWGPU(SSMX, SSMY)
+
+    sio.savemat("D.mat", {"D":D, "D2":D2})
+
+    plt.subplot(131)
+    plt.imshow(D, cmap = 'afmhot')
+    plt.subplot(132)
+    plt.imshow(D2, cmap = 'afmhot')
+    plt.subplot(133)
+    plt.imshow(D - D2, cmap = 'afmhot')
+    plt.show()
+
+
 
     (DAll, CSM, backpointers, involved) = DTWCSM(D)
     cost = DAll[-1, -1]

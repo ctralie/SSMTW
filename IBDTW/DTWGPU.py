@@ -2,8 +2,6 @@ import pycuda.autoinit
 import pycuda.driver as drv
 import pycuda.gpuarray as gpuarray
 import pycuda.cumath
-import skcuda.misc
-import skcuda.linalg as linalg
 import numpy as np
 import matplotlib.pyplot as plt
 import time
@@ -14,18 +12,22 @@ import _SequenceAlignment as SAC
 from pycuda.compiler import SourceModule
 
 DTW_ = None
+DTWSSM_ = None
 getSumSquares_ = None
 finishCSM_ = None
 
 def initParallelAlgorithms():
     global DTW_
+    global DTWSSM_
     fin = open("DTWGPU.cu")
     mod = SourceModule(fin.read())
     fin.close()
     DTW_ = mod.get_function("DTW")
 
-    #Run each of the algorithms on dummy data so that they're pre-compiled
-    linalg.init()
+    fin = open("DTWSSMGPU.cu")
+    mod = SourceModule(fin.read())
+    fin.close()
+    DTWSSM_ = mod.get_function("DTWSSM")
 
 def roundUpPow2(x):
     return np.array(int(2**np.ceil(np.log2(float(x)))), dtype=np.int32)
@@ -57,6 +59,29 @@ def doDTWGPU(CSM, ci, cj):
     ret = res.get()[0]
     print "Elapsed Time GPU: ", time.time() - tic
     return ret
+
+def doIBDTWGPU(pSSMA, pSSMB):
+    M = pSSMA.shape[0]
+    N = pSSMB.shape[0]
+    SSMA = gpuarray.to_gpu(np.array(pSSMA, dtype = np.float32))
+    SSMB = gpuarray.to_gpu(np.array(pSSMB, dtype = np.float32))
+
+
+    CSM = np.zeros((M, N), dtype=np.float32)
+    CSM = gpuarray.to_gpu(CSM)
+
+    diagLen = np.array(min(M, N), dtype = np.int32)
+    diagLenPow2 = roundUpPow2(diagLen)
+    NThreads = min(diagLen, 512)
+
+    M = np.array(M, dtype=np.int32)
+    N = np.array(N, dtype=np.int32)
+    tic = time.time()
+
+    DTWSSM_(SSMA, SSMB, CSM, M, N, diagLen, diagLenPow2, block=(int(NThreads), 1, 1), grid=(int(M), int(N)), shared=12*diagLen)
+    print "Elapsed Time GPU: ", time.time() - tic
+    return CSM.get()
+
 
 if __name__ == '__main__':
     initParallelAlgorithms()
