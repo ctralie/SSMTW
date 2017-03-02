@@ -35,8 +35,6 @@ if __name__ == '__main__':
     print "Elapsed Time CPU: ", time.time() - tic
     gSSMX = gpuarray.to_gpu(np.array(SSMX, dtype = np.float32))
     gSSMY = gpuarray.to_gpu(np.array(SSMY, dtype = np.float32))
-    CSM = np.zeros((M, N), dtype=np.float32)
-    CSM = gpuarray.to_gpu(CSM)
     D2 = doIBDTWGPU(gSSMX, gSSMY, True, True)
     resGPU = doIBDTWGPU(gSSMX, gSSMY, False, True)
 
