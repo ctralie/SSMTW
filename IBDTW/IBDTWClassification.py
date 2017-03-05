@@ -108,7 +108,7 @@ def doExperiment(N = 200, NPerClass = 40, K = 3, NBins = 50, plotCriticalPoints 
         sio.savemat("DExperiment.mat", {"DDTW":DDTW+DDTW.T, "DSSM":DSSM+DSSM.T, "DD2":DD2+DD2.T, "DMorse":DMorse+DMorse.T})
     return Xs
 
-if __name__ == '__main__':
+if __name__ == '__main__2':
     NPerClass = 6
     D = sio.loadmat("DExperiment.mat")
     DDTW = D['DDTW']
@@ -129,10 +129,10 @@ if __name__ == '__main__':
 
     plt.show()
 
-if __name__ == '__main__2':
+if __name__ == '__main__':
     initParallelAlgorithms()
     N = 200
-    NPerClass = 6
+    NPerClass = 60
     Xs = doExperiment(NPerClass = NPerClass)
     c = plt.get_cmap('spectral')
     C = c(np.array(np.round(np.linspace(0, 255, N*2)), dtype=np.int32))
