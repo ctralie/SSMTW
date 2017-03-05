@@ -47,17 +47,14 @@ def doDTWGPU(CSM, ci, cj):
 
     diagLen = np.array(min(M, N), dtype = np.int32)
     diagLenPow2 = roundUpPow2(diagLen)
-    print "diagLenPow2 = ", diagLenPow2
     NThreads = min(diagLen, 512)
     res = gpuarray.to_gpu(np.array([0.0], dtype=np.float32))
     M = np.array(M, dtype=np.int32)
     N = np.array(N, dtype=np.int32)
     ci = np.array(ci, dtype = np.int32)
     cj = np.array(cj, dtype = np.int32)
-    tic = time.time()
     DTW_(CSM, M, N, ci, cj, diagLen, diagLenPow2, res, block=(int(NThreads), 1, 1), grid=(1, 1), shared=12*diagLen)
     ret = res.get()[0]
-    print "Elapsed Time GPU: ", time.time() - tic
     return ret
 
 def doIBDTWGPU(SSMA, SSMB, returnCSM = False, printElapsedTime = False):

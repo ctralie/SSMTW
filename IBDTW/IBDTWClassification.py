@@ -5,6 +5,9 @@ import sys
 sys.path.append('..')
 sys.path.append('../GeometricCoverSongs')
 sys.path.append('../GeometricCoverSongs/SequenceAlignment')
+sys.path.append('../MorseSSM')
+from SSMTopological import *
+from DGMTools import *
 from CSMSSMTools import *
 from SyntheticCurves import *
 from Alignments import *
@@ -32,7 +35,7 @@ def getPrecisionRecall(D, NPerClass = 10):
     PR = PR/float(N)
     return PR
 
-def doExperiment(N = 200, NPerClass = 40, K = 3, NBins = 50):
+def doExperiment(N = 200, NPerClass = 40, K = 3, NBins = 50, plotCriticalPoints = False):
     WarpDict = getWarpDictionary(N)
     Curves = {}
     Curves['VivianiFigure8'] = lambda t: getVivianiFigure8(0.5, t)
@@ -46,16 +49,41 @@ def doExperiment(N = 200, NPerClass = 40, K = 3, NBins = 50):
     Curves['Epicycloid1_3'] = lambda t: getEpicycloid(1.5, 0.5, t)
     #Curves['Epicycloid1_4'] = lambda t: getEpicycloid(2, 0.5, t)
     Xs = []
+    DGMsJoin = []
+    DGMsSplit = []
+    plt.figure(figsize=(15, 4))
     for name in Curves:
         curve = Curves[name]
+        print "Making %s..."%name
         for k in range(NPerClass):
             t = getWarpingPath(WarpDict, K, False)
-            Xs.append(curve(t))
-
+            x = curve(t)
+            Xs.append(x)
+            #Do critical point time warping
+            D = getCSM(x, x)
+            c = SSMComplex(D)
+            c.makeMesh()
+            c.ISplit = c.ISplit[:, [1, 0]]
+            if plotCriticalPoints:
+                plt.clf()
+                plt.subplot(131)
+                c.plotMesh(False)
+                plt.hold(True)
+                c.plotCriticalPoints()
+                plt.subplot(132)
+                plotDGM(c.IJoin)
+                plt.title("Join")
+                plt.subplot(133)
+                plotDGM(c.ISplit)
+                plt.title("Split")
+                plt.savefig("%s_%i.png"%(name, k))
+            DGMsJoin.append(c.IJoin)
+            DGMsSplit.append(c.ISplit)
     NCurves = len(Xs)
     DDTW = np.zeros((NCurves, NCurves))
     DSSM = np.zeros((NCurves, NCurves))
     DD2 = np.zeros((NCurves, NCurves))
+    DMorse = np.zeros((NCurves, NCurves))
     for i in range(NCurves):
         x = Xs[i]
         SSMX = np.array(getCSM(x, x), dtype=np.float32)
@@ -73,7 +101,11 @@ def doExperiment(N = 200, NPerClass = 40, K = 3, NBins = 50):
             DDTW[i, j] = resGPU
             DSSM[i, j] = np.sqrt(np.sum((SSMX-SSMY)**2))
             DD2[i, j] = np.sum(np.abs(np.cumsum(hx) - np.cumsum(hy)))
-        sio.savemat("DExperiment.mat", {"DDTW":DDTW+DDTW.T, "DSSM":DSSM+DSSM.T, "DD2":DD2+DD2.T})
+            #Compute Wasserstein distance
+            score = getWassersteinDist(DGMsJoin[i], DGMsJoin[j])[1]
+            score += getWassersteinDist(DGMsSplit[i], DGMsSplit[j])[1]
+            DMorse[i, j] = score
+        sio.savemat("DExperiment.mat", {"DDTW":DDTW+DDTW.T, "DSSM":DSSM+DSSM.T, "DD2":DD2+DD2.T, "DMorse":DMorse+DMorse.T})
     return Xs
 
 if __name__ == '__main__':
@@ -82,16 +114,19 @@ if __name__ == '__main__':
     DDTW = D['DDTW']
     DSSM = D['DSSM']
     DD2 = D['DD2']
+    DMorse = D['DMorse']
     p1 = getPrecisionRecall(DDTW)
     p2 = getPrecisionRecall(DSSM)
     p3 = getPrecisionRecall(DD2)
+    p4 = getPrecisionRecall(DMorse)
     plt.plot(p1, 'r')
     plt.hold(True)
     plt.plot(p2, 'b')
     plt.plot(p3, 'k')
+    plt.plot(p4, 'm')
     plt.xlabel('Recall')
     plt.ylabel('Precision')
-    
+
     plt.show()
 
 if __name__ == '__main__2':

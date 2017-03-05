@@ -312,9 +312,29 @@ def getWarpingPath(D, k, doPlot = False):
     return res
 
 if __name__ == '__main__':
+    np.random.seed(20)
     D = getWarpDictionary(200)
-    p = getWarpingPath(D, 3, True)
-    plt.show()
+    plt.figure(figsize=(16, 10))
+#    plt.subplot(2, 4, 1)
+#    t = np.linspace(0, 1, 200)
+#    plt.plot(t)
+#    plt.title("Original Parameterization")
+#    plt.subplot(2, 4, 5)
+#    X = getTorusKnot(3, 5, t)
+#    SSM = getCSM(X, X)
+#    plt.imshow(SSM, cmap = 'afmhot', interpolation = 'nearest')
+#    plt.title("Original SSM")
+    for i in range(3):
+        plt.subplot(2, 3, i+1)
+        t = getWarpingPath(D, 3, True)
+        #plt.plot(t)
+        plt.title("Warping Path %i"%(i+1))
+        X = getTorusKnot(3, 5, t)
+        SSM = getCSM(X, X)
+        plt.subplot(2, 3, 4+i)
+        plt.imshow(SSM, cmap = 'afmhot', interpolation = 'nearest')
+        plt.title("SSM %i"%(i+1))
+    plt.savefig("RandomWarpingPaths.svg", bbox_inches = 'tight')
 
 if __name__ == "__main__2":
     N = 400

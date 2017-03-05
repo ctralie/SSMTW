@@ -1,3 +1,6 @@
 [submodule "GeometricCoverSongs"]
 	path = GeometricCoverSongs
 	url = https://github.com/ctralie/GeometricCoverSongs.git
+[submodule "MorseSSM"]
+	path = MorseSSM
+	url = https://github.com/ctralie/MorseSSM.git
