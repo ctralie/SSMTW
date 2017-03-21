@@ -311,7 +311,7 @@ def getWarpingPath(D, k, doPlot = False):
         plt.title('Constructed Warping Path')
     return res
 
-if __name__ == '__main__':
+if __name__ == '__main__2':
     np.random.seed(20)
     D = getWarpDictionary(200)
     plt.figure(figsize=(16, 10))
@@ -337,27 +337,47 @@ if __name__ == '__main__':
     plt.savefig("RandomWarpingPaths.svg", bbox_inches = 'tight')
 
 if __name__ == "__main__2":
-    N = 400
-    t = np.linspace(0, 1, N+1)[0:N]
-    Kappa = 0.1
-    NRelMag = 5
-    NBumps = 3
-    X = get2DFigure8(t)
-    (Y, Bumps) = addRandomBumps(X, Kappa, NRelMag, NBumps)
-    plt.figure(figsize=(12, 6))
-    plt.subplot(121)
-    plt.plot(Y[:, 0], Y[:, 1])
-    plt.hold(True)
-    plt.scatter(Bumps[:, 0], Bumps[:, 1], 20)
-    (D, _) = getSSM(Y, Y.shape[0])
-    plt.subplot(122)
-    plt.imshow(D)
-    plt.show()
+    plt.figure(figsize=(7, 3))
+    for i in [7, 8]:
+        plt.clf()
+        np.random.seed(i)
+        N = 400
+        t = np.linspace(0, 1, N+1)[0:N]
+        Kappa = 0.1
+        NRelMag = 2
+        NBumps = 4
+        X = np.zeros((N, 2))
+        X[:, 0] = np.cos(2*np.pi*t)
+        X[:, 1] = np.sin(4*np.pi*t)
+        (Y, Bumps) = addRandomBumps(X, Kappa, NRelMag, NBumps)
+        
+        diff = np.sqrt(np.sum((X-Y)**2, 1))
+        maxdistance = np.max(diff)
+        #Do critical point time warping
+        D = getCSM(Y, Y)
+        diam = np.max(D)
+        
+        plt.subplot(121)
+        plt.scatter(Y[:, 0], Y[:, 1], 20, np.arange(Y.shape[0]), cmap='Spectral', edgecolor='none')
+        plt.hold(True)
+        plt.scatter(Bumps[:, 0], Bumps[:, 1], 100, 'r')
+        plt.axis('equal')
+        ax = plt.gca()
+        ax.set_axis_bgcolor((0.15, 0.15, 0.15))
+        ax.set_xticks([])
+        ax.set_yticks([])
+        (D, _) = getSSM(Y, Y.shape[0])
+        plt.title("r = %.3g"%(maxdistance/diam))
+        plt.subplot(122)
+        plt.imshow(D, cmap = 'afmhot', interpolation = 'nearest')
+        plt.axis('off')
+        plt.title("SSM")
+        plt.savefig("Figure8Distorted%i.svg"%i, bbox_inches = 'tight')
 
 
-if __name__ == "__main__2":
+if __name__ == "__main__":
     N = 400
-    t = np.linspace(0, 1, N+1)[0:N]
+    t = np.linspace(0, 1, N)
     Xs = {}
     Xs['VivianiFigure8'] = getVivianiFigure8(0.5, t)
     Xs['TSCubic'] = getTschirnhausenCubic(1, t)
@@ -371,21 +391,26 @@ if __name__ == "__main__2":
     Xs['Epicycloid1_4'] = getEpicycloid(2, 0.5, t)
     Xs['Epicycloid1_20'] = getEpicycloid(2, 0.1, t)
 
-    fig = plt.figure(figsize=(12, 6))
+    fig = plt.figure(figsize=(15, 4))
+    i = 1
     for Curve in Xs:
         plt.clf()
         X = Xs[Curve]
         (SSM, _) = getSSM(X, N)
         if X.shape[1] > 2:
-            ax = fig.add_subplot(121, projection='3d')
+            ax = fig.add_subplot(131, projection='3d')
             ax.plot(X[:, 0], X[:, 1], X[:, 2])
         else:
-            plt.subplot(121)
+            plt.subplot(131)
             plt.plot(X[:, 0], X[:, 1])
         plt.title(Curve)
-        plt.subplot(122)
+        plt.subplot(132)
         plt.imshow(SSM, interpolation = 'none', cmap='afmhot')
-        plt.savefig("%s.png"%Curve)
+        SSMD = np.sign(SSM[:, 1::] - SSM[:, 0:-1])
+        plt.subplot(133)
+        plt.imshow(SSMD, interpolation = 'none', cmap = 'gray')
+        plt.savefig("%s.png"%Curve, bbox_inches = 'tight')
+        i += 1
 
 
 if __name__ == "__main__2":
