@@ -3,14 +3,12 @@ import matplotlib.pyplot as plt
 import scipy.io as sio
 import sys
 sys.path.append('..')
-sys.path.append('../GeometricCoverSongs')
-sys.path.append('../GeometricCoverSongs/SequenceAlignment')
 sys.path.append('../MorseSSM')
 from SSMTopological import *
 from DGMTools import *
-from CSMSSMTools import *
 from SyntheticCurves import *
 from Alignments import *
+from AlignmentTools import *
 from DTWGPU import *
 import os
 

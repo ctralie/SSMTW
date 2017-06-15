@@ -10,9 +10,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import scipy.interpolate as interp
 import sys
-sys.path.append('GeometricCoverSongs')
-sys.path.append('GeometricCoverSongs/SequenceAlignment')
-from CSMSSMTools import *
+from AlignmentTools import *
 
 ###################################################
 #           TOPC Utility Functions                #
@@ -223,94 +221,6 @@ def getConeHelix(c, NPeriods, pt):
     return X
 
 
-###################################################
-#                Warping Paths                    #
-###################################################
-def getInverseFnEquallySampled(t, x):
-    N = len(t)
-    t2 = np.linspace(np.min(x), np.max(x), N)
-    return interp.spline(x, t, t2)
-
-def getWarpDictionary(N, plotPaths = False):
-    t = np.linspace(0, 1, N)
-    D = []
-    #Polynomial
-    if plotPaths:
-        plt.subplot(131)
-        plt.title('Polynomial')
-        plt.hold(True)
-    for p in range(-4, 6):
-        tp = p
-        if tp < 0:
-            tp = -1.0/tp
-        x = t**(tp**1)
-        D.append(x)
-        if plotPaths:
-            plt.plot(x)
-    #Exponential / Logarithmic
-    if plotPaths:
-        plt.subplot(132)
-        plt.title('Exponential / Logarithmic')
-        plt.hold(True)
-    for p in range(2, 6):
-        t = np.linspace(1, p**p, N)
-        x = np.log(t)
-        x = x - np.min(x)
-        x = x/np.max(x)
-        t = t/np.max(t)
-        x2 = getInverseFnEquallySampled(t, x)
-        x2 = x2 - np.min(x2)
-        x2 = x2/np.max(x2)
-        #D.append(x)
-        #D.append(x2)
-        if plotPaths:
-            plt.plot(x)
-            plt.plot(x2)
-    #Hyperbolic Tangent
-    if plotPaths:
-        plt.subplot(133)
-        plt.title('Hyperbolic Tangent')
-        plt.hold(True)
-    for p in range(2, 5):
-        t = np.linspace(-2, p, N)
-        x = np.tanh(t)
-        x = x - np.min(x)
-        x = x/np.max(x)
-        t = t/np.max(t)
-        x2 = getInverseFnEquallySampled(t, x)
-        x2 = x2 - np.min(x2)
-        x2 = x2/np.max(x2)
-        D.append(x)
-        D.append(x2)
-        if plotPaths:
-            plt.plot(x)
-            plt.plot(x2)
-    D = np.array(D)
-    return D
-
-def getWarpingPath(D, k, doPlot = False):
-    """
-    Return a warping path made up of k elements
-    drawn from dictionary D
-    """
-    N = D.shape[0]
-    dim = D.shape[1]
-    ret = np.zeros(dim)
-    idxs = np.random.permutation(N)[0:k]
-    weights = np.zeros(N)
-    weights[idxs] = np.random.rand(k)
-    weights = weights / np.sum(weights)
-    res = weights.dot(D)
-    res = res - np.min(res)
-    res = res/np.max(res)
-    if doPlot:
-        plt.plot(res)
-        plt.hold(True)
-        for idx in idxs:
-            plt.plot(np.arange(dim), D[idx, :], linestyle='--')
-        plt.title('Constructed Warping Path')
-    return res
-
 if __name__ == '__main__2':
     np.random.seed(20)
     D = getWarpDictionary(200)
@@ -406,7 +316,11 @@ if __name__ == "__main__":
         plt.title(Curve)
         plt.subplot(132)
         plt.imshow(SSM, interpolation = 'none', cmap='afmhot')
-        SSMD = np.sign(SSM[:, 1::] - SSM[:, 0:-1])
+        #SSMD = np.sign(SSM[:, 1::] - SSM[:, 0:-1])
+        idx = np.argsort(SSM, 1)
+        SSMD = np.zeros(idx.shape)
+        for k in range(SSMD.shape[0]):
+            SSMD[k, idx[k, :]] = np.linspace(0, 1, SSMD.shape[1])
         plt.subplot(133)
         plt.imshow(SSMD, interpolation = 'none', cmap = 'gray')
         plt.savefig("%s.png"%Curve, bbox_inches = 'tight')

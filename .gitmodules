@@ -4,3 +4,9 @@
 [submodule "MorseSSM"]
 	path = MorseSSM
 	url = https://github.com/ctralie/MorseSSM.git
+[submodule "IBDTW/S3DGLPy"]
+	path = IBDTW/S3DGLPy
+	url = https://github.com/ctralie/S3DGLPy.git
+[submodule "IBDTW/SlidingWindowVideoTDA"]
+	path = IBDTW/SlidingWindowVideoTDA
+	url = https://github.com/ctralie/SlidingWindowVideoTDA.git

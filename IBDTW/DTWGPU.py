@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import time
 import scipy.io as sio
 from Alignments import *
+from AlignmentTools import *
 import _SequenceAlignment as SAC
 
 from pycuda.compiler import SourceModule
@@ -31,13 +32,6 @@ def initParallelAlgorithms():
 
 def roundUpPow2(x):
     return np.array(int(2**np.ceil(np.log2(float(x)))), dtype=np.int32)
-
-def getCSM(X, Y):
-    XSqr = np.sum(X**2, 1)
-    YSqr = np.sum(Y**2, 1)
-    C = XSqr[:, None] + YSqr[None, :] - 2*X.dot(Y.T)
-    C[C < 0] = 0
-    return np.sqrt(C)
 
 def doDTWGPU(CSM, ci, cj):
     #Minimum dimension of array can be at max size 1024

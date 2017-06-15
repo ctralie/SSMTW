@@ -13,8 +13,8 @@ from DTWGPU import *
 if __name__ == '__main__':
     initParallelAlgorithms()
     np.random.seed(10)
-    M = 200
-    N = 200
+    M = 70
+    N = 70
     t1 = np.linspace(0, 1, M)
     t2 = np.linspace(0, 1, N)
     t2 = t2**2
@@ -26,10 +26,18 @@ if __name__ == '__main__':
     Kappa = 0.1
     NRelMag = 5
     NBumps = 3
-    (Y, Bumps) = addRandomBumps(Y, Kappa, NRelMag, NBumps)
+    #(Y, Bumps) = addRandomBumps(Y, Kappa, NRelMag, NBumps)
 
     SSMX = np.array(getCSM(X, X), dtype=np.float32)
     SSMY = np.array(getCSM(Y, Y), dtype=np.float32)
+    #SSMX = getRankSSM(SSMX)
+    #SSMY = getRankSSM(SSMY)
+
+    SSMX = get2DRankSSM(SSMX)
+    SSMY = get2DRankSSM(SSMY)
+
+    #SSMX = getZNormSSM(SSMX)
+    #SSMY = getZNormSSM(SSMY)
     tic = time.time()
     D = doIBDTW(SSMX, SSMY)
     print "Elapsed Time CPU: ", time.time() - tic
@@ -38,7 +46,7 @@ if __name__ == '__main__':
     D2 = doIBDTWGPU(gSSMX, gSSMY, True, True)
     resGPU = doIBDTWGPU(gSSMX, gSSMY, False, True)
 
-    #sio.savemat("D.mat", {"D":D, "D2":D2})
+    sio.savemat("D.mat", {"D":D, "D2":D2})
 
     plt.subplot(131)
     plt.imshow(D, cmap = 'afmhot')

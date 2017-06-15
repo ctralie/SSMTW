@@ -7,6 +7,7 @@ sys.path.append('GeometricCoverSongs')
 sys.path.append('GeometricCoverSongs/SequenceAlignment')
 from CSMSSMTools import *
 from SyntheticCurves import *
+from AlignmentTools import *
 
 if __name__ == '__main__':
     N = 600
