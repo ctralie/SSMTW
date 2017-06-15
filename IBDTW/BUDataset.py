@@ -181,17 +181,17 @@ if __name__ == '__main__':
 
     Dict = getWarpDictionary(200)
     np.random.seed(100)
-    t2 = getWarpingPath(Dict, 3, doPlot = True)
-    t2 = t2*(SSMY.shape[0]-1)
-    t1 = SSMX.shape[0]*np.linspace(0, 1, len(t2))
+    t2 = getWarpingPath(Dict, 3)
+    t2 = t2*(SSMX.shape[0]-1)
+    t1 = SSMY.shape[0]*np.linspace(0, 1, len(t2))
 
 
 
     tic = time.time()
     D = doIBDTW(SSMX, SSMY)
     DRank = doIBDTW(SSMXRank, SSMYRank)
-    (DAll, CSM, backpointers, involved) = DTWCSM(D)
-    (DAllR, CSMR, backpointersR, involvedR) = DTWCSM(DRank)
+    (DAll, CSM, backpointers, path) = DTWCSM(D)
+    (DAllR, CSMR, backpointersR, pathR) = DTWCSM(DRank)
     print "Elapsed Time CPU: ", time.time() - tic
 
     plt.figure(figsize=(10, 10))
@@ -216,10 +216,7 @@ if __name__ == '__main__':
     plt.subplot(325)
     plt.imshow(D, cmap = 'afmhot', interpolation = 'nearest')
     plt.hold(True)
-    [J, I] = np.meshgrid(np.arange(involved.shape[1]), np.arange(involved.shape[0]))
-    J = J[involved == 1]
-    I = I[involved == 1]
-    plt.scatter(J, I, 5, 'c', edgecolor = 'none')
+    plt.scatter(path[:, 1], path[:, 0], 5, 'c', edgecolor = 'none')
     plt.scatter(t1, t2, 5, 'r', edgecolor = 'none')
     plt.xlim([0, CSM.shape[1]])
     plt.ylim([CSM.shape[0], 0])
@@ -230,10 +227,7 @@ if __name__ == '__main__':
     plt.subplot(326)
     plt.imshow(DRank, cmap = 'afmhot', interpolation = 'nearest')
     plt.hold(True)
-    [J, I] = np.meshgrid(np.arange(involvedR.shape[1]), np.arange(involvedR.shape[0]))
-    J = J[involvedR == 1]
-    I = I[involvedR == 1]
-    plt.scatter(J, I, 5, 'c', edgecolor = 'none')
+    plt.scatter(pathR[:, 1], pathR[:, 0], 5, 'c', edgecolor = 'none')
     plt.scatter(t1, t2, 5, 'r', edgecolor = 'none')
     plt.xlim([0, CSMR.shape[1]])
     plt.ylim([CSMR.shape[0], 0])

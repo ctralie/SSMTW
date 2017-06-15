@@ -56,7 +56,7 @@ if __name__ == '__main__':
     plt.imshow(D - D2, cmap = 'afmhot')
     plt.show()
 
-    (DAll, CSM, backpointers, involved) = DTWCSM(D)
+    (DAll, CSM, backpointers, path) = DTWCSM(D)
     resCPU = DAll[-1, -1]
     print "GPU Result: ", resGPU
     print "CPU Result: ", resCPU
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     c = plt.get_cmap('Spectral')
     C1 = c(np.array(np.round(255*np.arange(M)/float(M)), dtype=np.int32))
     C1 = C1[:, 0:3]
-    idx = np.argsort(-involved, 0)[0, :]
+    idx = projectPath(path)
     C2 = c(np.array(np.round(255*idx/float(M)), dtype=np.int32))
     C2 = C2[:, 0:3]
 
@@ -83,10 +83,7 @@ if __name__ == '__main__':
     plt.subplot(223)
     plt.imshow(D, cmap = 'afmhot', interpolation = 'nearest')
     plt.hold(True)
-    [J, I] = np.meshgrid(np.arange(involved.shape[1]), np.arange(involved.shape[0]))
-    J = J[involved == 1]
-    I = I[involved == 1]
-    plt.scatter(J, I, 5, 'c', edgecolor = 'none')
+    plt.scatter(path[:, 1], path[:, 0], 5, 'c', edgecolor = 'none')
     plt.xlim([0, CSM.shape[1]])
     plt.ylim([CSM.shape[0], 0])
     plt.axis('off')

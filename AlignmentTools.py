@@ -150,3 +150,17 @@ def getInterpolatedEuclideanTimeSeries(X, t):
     f = interp.interp2d(dix, t0, X, kind='linear')
     Y = f(dix, t)
     return Y
+
+def projectPath(path):
+    """
+    Choose an index along the column to go with every
+    row index
+    """
+    M = path[-1, 0] + 1
+    N = path[-1, 1] + 1
+    involved = np.zeros((M, N))
+    involved[path[:, 0], path[:, 1]] = 1
+    return np.argsort(-involved, 0)[0, :]
+
+def computeAlignmentError(P1, P2, M, N):
+    Area = np.zeros((M, N))

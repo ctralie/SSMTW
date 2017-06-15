@@ -3,13 +3,13 @@ import matplotlib.pyplot as plt
 import _SequenceAlignment as SAC
 import time
 
-def backtrace(backpointers, node, involved):
+def backtrace(backpointers, node, path):
     optimal = False
     for P in backpointers[node]:
-        if backtrace(backpointers, (P[0], P[1]), involved):
+        if backtrace(backpointers, (P[0], P[1]), path):
             P[2] = True
             optimal = True
-            involved[node[0], node[1]] = 1
+            path.append([node[0]-1, node[1]-1])
     if node[0] == 0 and node[1] == 0:
         return True #Reached the beginning
     return optimal
@@ -45,9 +45,10 @@ def LevDist(a, b):
                 backpointers[(i, j)].append([i, j-1, False])
             if du == D[i, j]:
                 backpointers[(i, j)].append([i-1, j, False])
-    involved = np.zeros((M+1, N+1))
-    backtrace(backpointers, (M, N), involved) #Recursive backtrace from the end
-    return (D, backpointers)
+    path = []
+    backtrace(backpointers, (M, N), path) #Recursive backtrace from the end
+    path = np.array(path)
+    return (D, path)
 
 
 def DTWCSM(CSM):
@@ -76,9 +77,10 @@ def DTWCSM(CSM):
                 backpointers[(i, j)].append([i, j-1, False])
             if du == D[i, j]:
                 backpointers[(i, j)].append([i-1, j, False])
-    involved = np.zeros((M+1, N+1))
-    backtrace(backpointers, (M, N), involved) #Recursive backtrace from the end
-    return (D, CSM, backpointers, involved)
+    path = []
+    backtrace(backpointers, (M, N), path) #Recursive backtrace from the end
+    path = np.array(path)
+    return (D, CSM, backpointers, path)
 
 def DTW(X, Y, distfn):
     """
@@ -104,16 +106,15 @@ def constrainedDTW(X, Y, distfn, ci, cj):
     for i in range(M):
         for j in range(N):
             CSM[i, j] = distfn(X[i, :], Y[j, :])
-    (D1, _, _, involved1) = DTW(X[0:ci+1, :], Y[0:cj+1, :], distfn)
-    (D2, _, _, involved2) = DTW(X[ci::, :], Y[cj::, :], distfn)
+    (D1, _, _, path1) = DTW(X[0:ci+1, :], Y[0:cj+1, :], distfn)
+    (D2, _, _, path2) = DTW(X[ci::, :], Y[cj::, :], distfn)
     D2 = D2 - CSM[ci, cj] + D1[-1, -1]
-    involved = np.zeros((M+1, N+1))
-    involved[0:D1.shape[0], 0:D1.shape[1]] = involved1
-    involved[D1.shape[0]-1::, D1.shape[1]-1::] = involved2[1::, 1::]
     D = np.inf*np.ones((M+1, N+1))
     D[0:D1.shape[0], 0:D1.shape[1]] = D1
     D[D1.shape[0]-1::, D1.shape[1]-1::] = D2[1::, 1::]
-    return (D, CSM, None, involved)
+    path2 += [ci, cj]
+    path = np.concatenate((path1, path2), 0)
+    return (D, CSM, None, path)
 
 def writeChar(fout, i, j, c):
     fout.write("\\node at (%g, %g) {%s};\n"%(j+0.5, i+0.5, c))
@@ -194,17 +195,16 @@ def DTWExample():
     Y[:, 0] = t2
     Y[:, 1] = np.cos(4*np.pi*t2) + t2 + 0.5
 
-    (D, CSM, backpointers, involved) = DTW(X, Y, lambda x,y: np.sqrt(np.sum((x-y)**2)))
+    (D, CSM, backpointers, path) = DTW(X, Y, lambda x,y: np.sqrt(np.sum((x-y)**2)))
     print "Unconstrained DTW: ", D[-1, -1]
 
     constraint = [20, 30]
-    (D, CSM, backpointers, involved) = constrainedDTW(X, Y, lambda x,y: np.sqrt(np.sum((x-y)**2)), constraint[0], constraint[1])
+    (D, CSM, backpointers, path) = constrainedDTW(X, Y, lambda x,y: np.sqrt(np.sum((x-y)**2)), constraint[0], constraint[1])
     print "Cost Python: ", D[-1, -1]
     tic = time.time()
     print "Cost C: ", SAC.constrainedDTW(CSM, constraint[0], constraint[1])
     toc = time.time()
     print "Elapsed Time: ", toc-tic
-    involved = involved[1::, 1::]
 
     plt.figure(figsize=(12, 12))
     plt.subplot2grid((2, 2), (0, 0), colspan=2)
@@ -213,11 +213,9 @@ def DTWExample():
     plt.scatter(Y[:, 0], Y[:, 1], 20, 'b')
     plt.plot(X[:, 0], X[:, 1], 'r')
     plt.plot(Y[:, 0], Y[:, 1], 'b')
-    [J, I] = np.meshgrid(np.arange(involved.shape[1]), np.arange(involved.shape[0]))
-    J = J[involved == 1]
-    I = I[involved == 1]
-    for i in range(len(J)):
-        plt.plot([X[I[i], 0], Y[J[i], 0]], [X[I[i], 1], Y[J[i], 1]], 'k')
+    for k in range(path.shape[0]):
+        [i, j] = path[k, :]
+        plt.plot([X[i, 0], Y[j, 0]], [X[i, 1], Y[j, 1]], 'k')
     [i, j] = [constraint[0], constraint[1]]
     plt.scatter([X[i, 0], Y[j, 0]], [X[i, 1], Y[j, 1]], 100, color = '#00ff00', edgecolor = 'k')
     plt.axis('off')
@@ -226,7 +224,7 @@ def DTWExample():
     plt.subplot(223)
     plt.imshow(CSM, interpolation = 'nearest', cmap=plt.get_cmap('afmhot'), aspect = 'auto')
     plt.hold(True)
-    plt.plot(J, I, '.')
+    plt.plot(path[:, 1], path[:, 0], '.')
     plt.scatter(constraint[1], constraint[0], 100, color = '#00ff00', edgecolor = 'k')
     plt.xlim([-1, D.shape[1]])
     plt.ylim([D.shape[0], -1])
@@ -236,14 +234,14 @@ def DTWExample():
 
     plt.subplot(224)
     plt.imshow(D[1::, 1::], interpolation = 'nearest', cmap=plt.get_cmap('afmhot'), aspect = 'auto')
-    plt.plot(J, I, '.')
+    plt.plot(path[:, 1], path[:, 0], '.')
     plt.xlim([-1, D.shape[1]])
     plt.ylim([D.shape[0], -1])
     plt.xlabel("Blue Curve")
     plt.ylabel("Red Curve")
     plt.title("Dynamic Programming Matrix")
 
-    #plt.show()
+    plt.show()
     plt.savefig("DTWExample_%i_%i.svg"%(constraint[0], constraint[1]), bbox_inches='tight')
 
 if __name__ == '__main__':
