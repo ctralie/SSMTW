@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.interpolate as interp
 import matplotlib.pyplot as plt
+from skimage.draw import line
 
 def getCSM(X, Y):
     XSqr = np.sum(X**2, 1)
@@ -50,9 +51,13 @@ def get2DRankSSM(SSM):
     D = D + D.T
     return D
 
-def getZNormSSM(SSM):
+def get1DZNormSSM(SSM):
     std = np.std(SSM, 1)
     return SSM/std[:, None]
+
+def get2DZNormSSM(SSM):
+    std = np.std(SSM.flatten())
+    return SSM/std
 
 ###################################################
 #                Warping Paths                    #
@@ -162,5 +167,46 @@ def projectPath(path):
     involved[path[:, 0], path[:, 1]] = 1
     return np.argsort(-involved, 0)[0, :]
 
-def computeAlignmentError(P1, P2, M, N):
-    Area = np.zeros((M, N))
+def rasterizeWarpingPath(P):
+    if np.sum(np.abs(P - np.round(P))) == 0:
+        #No effect if already integer
+        return P
+    P2 = np.round(P)
+    P2 = np.array(P2, dtype = np.int32)
+    ret = []
+    for i in range(P2.shape[0]-1):
+        [i1, j1] = [P2[i, 0], P2[i, 1]]
+        [i2, j2] = [P2[i+1, 0], P2[i+1, 1]]
+        ret.append([i1, j1])
+        for k in range(1, i2-i1):
+            ret.append([i1+k, j1])
+        ret.append([i2, j2])
+    return np.array(ret)
+
+def computeAlignmentError(pP1, pP2, doPlot = False):
+    """
+    Compute area-based alignment error.  Assume that P1
+    and P2 are on the same grid
+    """
+    P1 = rasterizeWarpingPath(pP1)
+    P2 = rasterizeWarpingPath(pP2)
+    M = np.max(P1[:, 0])
+    N = np.max(P1[:, 1])
+    A1 = np.zeros((M, N))
+    A2 = np.zeros((M, N))
+    for i in range(P1.shape[0]):
+        [ii, jj] = [P1[i, 0], P1[i, 1]]
+        [ii, jj] = [min(ii, M-1), min(jj, N-1)]
+        A1[ii, jj::] = 1
+    for i in range(P2.shape[0]):
+        [ii, jj] = [P2[i, 0], P2[i, 1]]
+        [ii, jj] = [min(ii, M-1), min(jj, N-1)]
+        A2[ii, jj::] = 1
+    A = np.abs(A1 - A2)
+    score = np.sum(A)/float(M*N)
+    plt.imshow(A)
+    plt.hold(True)
+    plt.scatter(pP1[:, 1], pP1[:, 0], 5, 'c', edgecolor = 'none')
+    plt.scatter(pP2[:, 1], pP2[:, 0], 5, 'r', edgecolor = 'none')
+    plt.title("Score = %g"%score)
+    return score

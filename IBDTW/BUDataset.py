@@ -172,19 +172,24 @@ if __name__ == '__main__':
         SSMXRank = get2DRankSSM(SSMX)
         SSMYRank = get2DRankSSM(SSMY)
 
-        #SSMXRank = getZNormSSM(SSMX)
-        #SSMYRank = getZNormSSM(SSMY)
+        #SSMXRank = get1DZNormSSM(SSMX)
+        #SSMYRank = get1DZNormSSM(SSMY)
         sio.savemat(filename, {"SSMX":SSMX, "SSMY":SSMY, "SSMXRank":SSMXRank, "SSMYRank":SSMYRank})
     else:
         X = sio.loadmat(filename)
         [SSMX, SSMY, SSMXRank, SSMYRank] = [X['SSMX'], X['SSMY'], X['SSMXRank'], X['SSMYRank']]
+
+        SSMXRank = get2DZNormSSM(SSMX)
+        SSMYRank = get2DZNormSSM(SSMY)
 
     Dict = getWarpDictionary(200)
     np.random.seed(100)
     t2 = getWarpingPath(Dict, 3)
     t2 = t2*(SSMX.shape[0]-1)
     t1 = SSMY.shape[0]*np.linspace(0, 1, len(t2))
-
+    P2 = np.zeros((len(t1), 2))
+    P2[:, 0] = t2
+    P2[:, 1] = t1
 
 
     tic = time.time()
@@ -214,26 +219,29 @@ if __name__ == '__main__':
     plt.title('SSM 2 Rank')
 
     plt.subplot(325)
+    err1 = computeAlignmentError(path, P2)
     plt.imshow(D, cmap = 'afmhot', interpolation = 'nearest')
     plt.hold(True)
     plt.scatter(path[:, 1], path[:, 0], 5, 'c', edgecolor = 'none')
-    plt.scatter(t1, t2, 5, 'r', edgecolor = 'none')
+    plt.scatter(P2[:, 1], P2[:, 0], 5, 'r', edgecolor = 'none')
     plt.xlim([0, CSM.shape[1]])
     plt.ylim([CSM.shape[0], 0])
     plt.axis('off')
     #plt.title("Cost = %g"%resGPU)
-    plt.title("Cross-Similarity Warp Matrix Orig")
+    plt.title("CSWM Orig, Err = %g"%err1)
 
     plt.subplot(326)
+    err2 = computeAlignmentError(pathR, P2)
     plt.imshow(DRank, cmap = 'afmhot', interpolation = 'nearest')
     plt.hold(True)
     plt.scatter(pathR[:, 1], pathR[:, 0], 5, 'c', edgecolor = 'none')
-    plt.scatter(t1, t2, 5, 'r', edgecolor = 'none')
+    plt.scatter(P2[:, 1], P2[:, 0], 5, 'r', edgecolor = 'none')
     plt.xlim([0, CSMR.shape[1]])
     plt.ylim([CSMR.shape[0], 0])
     plt.axis('off')
     #plt.title("Cost = %g"%resGPU)
-    plt.title("Cross-Similarity Warp Matrix Ranks")
+    plt.title("CSWM Ranks, Err = %g"%err2)
+
 
     plt.show()
 
@@ -244,8 +252,8 @@ if __name__ == '__main__2':
     SSMY = np.array(getCSM(Y, Y), dtype=np.float32)
     SSMX = get2DRankSSM(SSMX)
     SSMY = get2DRankSSM(SSMY)
-    #SSMX = getZNormSSM(SSMX)
-    #SSMY = getZNormSSM(SSMY)
+    #SSMX = get1DZNormSSM(SSMX)
+    #SSMY = get1DZNormSSM(SSMY)
     tic = time.time()
     D = doIBDTW(SSMX, SSMY)
     print "Elapsed Time CPU: ", time.time() - tic
