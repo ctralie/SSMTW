@@ -1,14 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
-import sys
-sys.path.append('..')
-sys.path.append('../GeometricCoverSongs')
-sys.path.append('../GeometricCoverSongs/SequenceAlignment')
-from CSMSSMTools import *
 from SyntheticCurves import *
-from Alignments import *
-from DTWGPU import *
+from Alignment.Alignments import *
+from Alignment.DTWGPU import *
 
 if __name__ == '__main__':
     initParallelAlgorithms()

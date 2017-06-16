@@ -1,7 +1,6 @@
 import numpy as np
 import scipy.interpolate as interp
 import matplotlib.pyplot as plt
-from skimage.draw import line
 
 def getCSM(X, Y):
     XSqr = np.sum(X**2, 1)
@@ -10,28 +9,8 @@ def getCSM(X, Y):
     C[C < 0] = 0
     return np.sqrt(C)
 
-def getSSM(X, DPixels, doPlot = False):
-    """
-    Compute a Euclidean self-similarity image between a set of points
-    :param X: An Nxd matrix holding the d coordinates of N points
-    :param DPixels: The image will be resized to this dimensions
-    :param doPlot: If true, show a plot comparing the original/resized images
-    :return: A tuple (D, DResized)
-    """
-    D = np.sum(X**2, 1)[:, None]
-    D = D + D.T - 2*X.dot(X.T)
-    D[D < 0] = 0
-    D = 0.5*(D + D.T)
-    D = np.sqrt(D)
-    if doPlot:
-        plt.subplot(121)
-        plt.imshow(D, interpolation = 'none')
-        plt.subplot(122)
-        plt.imshow(scipy.misc.imresize(D, (DPixels, DPixels)), interpolation = 'none')
-        plt.show()
-    if not (D.shape[0] == DPixels):
-        return (D, scipy.misc.imresize(D, (DPixels, DPixels)))
-    return (D, D)
+def getSSM(X):
+    return getCSM(X, X)
 
 def getRankSSM(SSM):
     idx = np.argsort(SSM, 1)

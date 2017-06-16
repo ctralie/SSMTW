@@ -2,14 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
 import sys
-sys.path.append('..')
-sys.path.append('../MorseSSM')
-from SSMTopological import *
-from DGMTools import *
 from SyntheticCurves import *
-from Alignments import *
-from AlignmentTools import *
-from DTWGPU import *
+from Alignment.Alignments import *
+from Alignment.AlignmentTools import *
+from Alignment.DTWGPU import *
 import os
 
 def getPrecisionRecall(D, NPerClass = 10):
@@ -34,7 +30,7 @@ def getPrecisionRecall(D, NPerClass = 10):
     PR = PR/float(N)
     return PR
 
-def doExperiment(N = 200, NPerClass = 40, K = 3, NBins = 50, plotCriticalPoints = False):
+def doExperiment(N = 200, NPerClass = 40, K = 3, NBins = 50):
     np.random.seed(NPerClass)
     WarpDict = getWarpDictionary(N)
     Curves = {}
@@ -54,8 +50,6 @@ def doExperiment(N = 200, NPerClass = 40, K = 3, NBins = 50, plotCriticalPoints 
     NBumps = 4
     
     Xs = []
-    DGMsJoin = []
-    DGMsSplit = []
     plt.figure(figsize=(15, 4))
     maxdistances = []
     diameters = []
@@ -71,27 +65,8 @@ def doExperiment(N = 200, NPerClass = 40, K = 3, NBins = 50, plotCriticalPoints 
             diff = np.sqrt(np.sum((x-x1)**2, 1))
             maxdistances.append(np.max(diff))
             Xs.append(x)
-            #Do critical point time warping
-            D = getCSM(x, x)
+            D = getSSM(x)
             diameters.append(np.max(D))
-            c = SSMComplex(D)
-            c.makeMesh()
-            c.ISplit = c.ISplit[:, [1, 0]]
-            if plotCriticalPoints:
-                plt.clf()
-                plt.subplot(131)
-                c.plotMesh(False)
-                plt.hold(True)
-                c.plotCriticalPoints()
-                plt.subplot(132)
-                plotDGM(c.IJoin)
-                plt.title("Join")
-                plt.subplot(133)
-                plotDGM(c.ISplit)
-                plt.title("Split")
-                plt.savefig("%s_%i.png"%(name, k))
-            DGMsJoin.append(c.IJoin)
-            DGMsSplit.append(c.ISplit)
         print "Elapsed Time: ", time.time() - tic
     sio.savemat("maxdistances.mat", {"maxdistances":np.array(maxdistances), "diameters":np.array(diameters)})
         
@@ -99,7 +74,6 @@ def doExperiment(N = 200, NPerClass = 40, K = 3, NBins = 50, plotCriticalPoints 
     DDTW = np.zeros((NCurves, NCurves))
     DSSM = np.zeros((NCurves, NCurves))
     DD2 = np.zeros((NCurves, NCurves))
-    DMorse = np.zeros((NCurves, NCurves))
     istart = 0
     if os.path.exists("DExperiment.mat"):
         D = sio.loadmat("DExperiment.mat")
@@ -108,18 +82,17 @@ def doExperiment(N = 200, NPerClass = 40, K = 3, NBins = 50, plotCriticalPoints 
         DDTW = D['DDTW']
         DSSM = D['DSSM']
         DD2 = D['DD2']
-        DMorse = D['DMorse']
     for i in range(istart, NCurves):
         tic = time.time()
         x = Xs[i]
-        SSMX = np.array(getCSM(x, x), dtype=np.float32)
+        SSMX = np.array(getSSM(x), dtype=np.float32)
         hx = 1.0*np.histogram(SSMX, bins=NBins, range=(0, 4))[0]
         hx = hx/np.sum(hx)
         gSSMX = gpuarray.to_gpu(np.array(SSMX, dtype = np.float32))
         print "Finished %i of %i..."%(i, NCurves)
         for j in range(i+1, NCurves):
             y = Xs[j]
-            SSMY = np.array(getCSM(y, y), dtype=np.float32)
+            SSMY = np.array(getSSM(y), dtype=np.float32)
             hy = 1.0*np.histogram(SSMY, bins=NBins, range=(0, 4))[0]
             hy = hy/np.sum(hy)
             gSSMY = gpuarray.to_gpu(np.array(SSMY, dtype = np.float32))
@@ -130,12 +103,7 @@ def doExperiment(N = 200, NPerClass = 40, K = 3, NBins = 50, plotCriticalPoints 
             DSSM[j, i] = DSSM[i, j]
             DD2[i, j] = np.sum(np.abs(np.cumsum(hx) - np.cumsum(hy)))
             DD2[j, i] = DD2[i, j]
-            #Compute Wasserstein distance
-            score = getWassersteinDist(DGMsJoin[i], DGMsJoin[j])[1]
-            score += getWassersteinDist(DGMsSplit[i], DGMsSplit[j])[1]
-            DMorse[i, j] = score
-            DMorse[j, i] = score
-        sio.savemat("DExperiment.mat", {"DDTW":DDTW, "DSSM":DSSM, "DD2":DD2, "DMorse":DMorse, "istart":i+1})
+        sio.savemat("DExperiment.mat", {"DDTW":DDTW, "DSSM":DSSM, "DD2":DD2, "istart":i+1})
         print "Elapsed Time: ", time.time() - tic
     return Xs
 
@@ -145,16 +113,13 @@ if __name__ == '__main__2':
     DDTW = D['DDTW']
     DSSM = D['DSSM']
     DD2 = D['DD2']
-    DMorse = D['DMorse']
     p1 = getPrecisionRecall(DDTW, NPerClass)
     p2 = getPrecisionRecall(DSSM, NPerClass)
     p3 = getPrecisionRecall(DD2, NPerClass)
-    p4 = getPrecisionRecall(DMorse, NPerClass)
     plt.plot(p1, 'r')
     plt.hold(True)
     plt.plot(p2, 'b')
     plt.plot(p3, 'k')
-    plt.plot(p4, 'm')
     plt.xlabel('Recall')
     plt.ylabel('Precision')
 
@@ -172,7 +137,7 @@ if __name__ == '__main__':
     for i in range(len(Xs)):
         x = Xs[i]
         plt.clf()
-        SSM = getCSM(x, x)
+        SSM = getSSM(x)
         plt.subplot(121)
         plt.scatter(x[:, 0], x[:, 1], 20, c=C, edgecolor='none')
         ax = plt.gca()

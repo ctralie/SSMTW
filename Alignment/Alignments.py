@@ -241,9 +241,9 @@ def DTWExample():
     plt.ylabel("Red Curve")
     plt.title("Dynamic Programming Matrix")
 
-    plt.show()
     plt.savefig("DTWExample_%i_%i.svg"%(constraint[0], constraint[1]), bbox_inches='tight')
-
+    plt.show()
+    
 if __name__ == '__main__':
     #LevenshteinExample()
     DTWExample()

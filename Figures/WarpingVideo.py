@@ -3,9 +3,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import scipy.interpolate as interp
 import sys
-sys.path.append('GeometricCoverSongs')
-sys.path.append('GeometricCoverSongs/SequenceAlignment')
-from CSMSSMTools import *
+sys.path.append('..')
 from SyntheticCurves import *
 from AlignmentTools import *
 

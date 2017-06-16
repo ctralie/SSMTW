@@ -2,15 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
 import sys
-sys.path.append('..')
-sys.path.append('S3DGLPy')
-sys.path.append('SlidingWindowVideoTDA')
-from CSMSSMTools import *
-from SyntheticCurves import *
-from Alignments import *
-from DTWGPU import *
-from PolyMesh import *
-from VideoTools import *
+from Geom3D.PolyMesh import *
+from SlidingWindowVideoTDA.VideoTools import *
+from Alignment.AlignmentTools import *
 import subprocess
 import glob
 import time
@@ -39,26 +33,20 @@ def loadVideoFolder(foldername):
         I[i, :] = np.array(f.flatten(), dtype=np.float32)/255.0
     return (I, IDims)
 
-#Purpose: To sample the unit sphere as evenly as possible.  The higher
-#res is, the more samples are taken on the sphere (in an exponential
-#relationship with res).  By default, samples 66 points
 def getSphereSamples(res = 2):
+    """
+    Sample the unit sphere as evenly as possible.  The higher res is,
+    the more samples are taken on the sphere (in an exponential
+    relationship with res).  By default, samples 66 points
+    """
     m = getSphereMesh(1, res)
     return m.VPos.T
 
-def compareHistsEMD1D(AllHists):
-    N = AllHists.shape[1]
-    K = AllHists.shape[0]
-    CS = np.cumsum(AllHists, 0)
-    D = np.zeros((N, N))
-    for k in range(K):
-        c = CS[k, :]
-        D += np.abs(c[:, None] - c[None, :])
-    return D
-
-#Purpose: To sample a point cloud, center it on its centroid, and
-#then scale all of the points so that the RMS distance to the origin is 1
 def samplePointCloud(mesh, N):
+    """
+    Sample a point cloud, center it on its centroid, and then
+    scale all of the points so that the RMS distance to the origin is 1
+    """
     (Ps, Ns) = mesh.randomlySamplePoints(N)
     ##TODO: Center the point cloud on its centroid and normalize
     #by its root mean square distance to the origin.  Note that this
@@ -68,13 +56,17 @@ def samplePointCloud(mesh, N):
     Ps = Ps*np.sqrt(Ps.shape[1]/np.sum(Ps**2))
     return (Ps, Ns)
 
-#Purpose: To create shape histogram with concentric spherical shells and
-#sectors within each shell, sorted in decreasing order of number of points
-#Inputs: Ps (3 x N point cloud), Ns (3 x N array of normals) (not needed here
-#but passed along for consistency), NShells (number of shells),
-#RMax (maximum radius), SPoints: A 3 x S array of points sampled evenly on
-#the unit sphere (get these with the function "getSphereSamples")
 def getShapeShellHistogram(Ps, Ns, NShells, RMax, SPoints):
+    """
+    Create shape histogram with concentric spherical shells and
+    sectors within each shell, sorted in decreasing order of number of points
+    :param Ps: 3 x N point cloud
+    :param Ns: 3 x N array of normals (not needed here but passed along for consistency)
+    :param NShells: number of shells)
+    :param RMax: Maximum radius
+    :param SPoints: A 3 x S array of points sampled evenly on the unit sphere 
+                    (get these with the function "getSphereSamples")
+    """
     NSectors = SPoints.shape[1] #A number of sectors equal to the number of
     #points sampled on the sphere
     #Create a 2D histogram that is NShells x NSectors
@@ -138,7 +130,7 @@ def precomputeEuclideanEmbeddings():
                 #Load in mesh and compute D2
                 NShells = 20
                 I = loadMeshVideoFolder(foldername, NShells)
-                SSM = np.array(getCSM(I, I), dtype=np.float32)
+                SSM = np.array(getSSM(I), dtype=np.float32)
                 #Save the results
                 sio.savemat(filename, {"SSM":SSM, "I":I})
             filename = "%s/VideoPCA.mat"%foldername

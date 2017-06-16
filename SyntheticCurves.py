@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import scipy.interpolate as interp
 import sys
-from AlignmentTools import *
+from Alignment.AlignmentTools import *
 
 ###################################################
 #           TOPC Utility Functions                #
@@ -34,7 +34,7 @@ def applyRandomRigidTransformation(X):
 def getMeanDistNeighbs(X, Kappa):
     N = X.shape[0]
     K = int(Kappa*N)
-    (D, _) = getSSM(X, N)
+    D = getSSM(X)
     Neighbs = np.partition(D, K+1, 1)[:, 0:K+1]
     return np.mean(Neighbs, 1)*float(K+1)/float(K)
 
@@ -276,7 +276,7 @@ if __name__ == "__main__2":
         ax.set_axis_bgcolor((0.15, 0.15, 0.15))
         ax.set_xticks([])
         ax.set_yticks([])
-        (D, _) = getSSM(Y, Y.shape[0])
+        D = getSSM(Y)
         plt.title("r = %.3g"%(maxdistance/diam))
         plt.subplot(122)
         plt.imshow(D, cmap = 'afmhot', interpolation = 'nearest')
@@ -306,7 +306,7 @@ if __name__ == "__main__":
     for Curve in Xs:
         plt.clf()
         X = Xs[Curve]
-        (SSM, _) = getSSM(X, N)
+        SSM = getSSM(X)
         if X.shape[1] > 2:
             ax = fig.add_subplot(131, projection='3d')
             ax.plot(X[:, 0], X[:, 1], X[:, 2])
@@ -318,9 +318,7 @@ if __name__ == "__main__":
         plt.imshow(SSM, interpolation = 'none', cmap='afmhot')
         #SSMD = np.sign(SSM[:, 1::] - SSM[:, 0:-1])
         idx = np.argsort(SSM, 1)
-        SSMD = np.zeros(idx.shape)
-        for k in range(SSMD.shape[0]):
-            SSMD[k, idx[k, :]] = np.linspace(0, 1, SSMD.shape[1])
+        SSMD = get2DRankSSM(SSM)
         plt.subplot(133)
         plt.imshow(SSMD, interpolation = 'none', cmap = 'gray')
         plt.savefig("%s.png"%Curve, bbox_inches = 'tight')

@@ -6,6 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import scipy.io as sio
+import pkg_resources
+import sys
 from Alignments import *
 from AlignmentTools import *
 import _SequenceAlignment as SAC
@@ -17,17 +19,27 @@ DTWSSM_ = None
 getSumSquares_ = None
 finishCSM_ = None
 
+def getResourceString(filename):
+    if 'Alignment' not in sys.modules:
+        #If calling from within this directory
+        fin = open(filename)
+        s = fin.read()
+        fin.close()
+    else:
+        #If calling from imported package
+        s = pkg_resources.resource_string('Alignment', '/%s'%filename)
+    return s
+
 def initParallelAlgorithms():
     global DTW_
     global DTWSSM_
-    fin = open("DTWGPU.cu")
-    mod = SourceModule(fin.read())
-    fin.close()
+    
+    s = getResourceString("DTWGPU.cu")
+    mod = SourceModule(s)
     DTW_ = mod.get_function("DTW")
 
-    fin = open("DTWSSMGPU.cu")
-    mod = SourceModule(fin.read())
-    fin.close()
+    s = getResourceString("DTWSSMGPU.cu")
+    mod = SourceModule(s)
     DTWSSM_ = mod.get_function("DTWSSM")
 
 def roundUpPow2(x):

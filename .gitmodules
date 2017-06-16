@@ -1,12 +1,6 @@
-[submodule "GeometricCoverSongs"]
-	path = GeometricCoverSongs
-	url = https://github.com/ctralie/GeometricCoverSongs.git
-[submodule "MorseSSM"]
-	path = MorseSSM
-	url = https://github.com/ctralie/MorseSSM.git
-[submodule "IBDTW/S3DGLPy"]
-	path = IBDTW/S3DGLPy
-	url = https://github.com/ctralie/S3DGLPy.git
-[submodule "IBDTW/SlidingWindowVideoTDA"]
-	path = IBDTW/SlidingWindowVideoTDA
+[submodule "Geom3D"]
+	path = Geom3D
+	url = https://github.com/ctralie/Geom3D.git
+[submodule "SlidingWindowVideoTDA"]
+	path = SlidingWindowVideoTDA
 	url = https://github.com/ctralie/SlidingWindowVideoTDA.git
