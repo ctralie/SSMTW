@@ -11,6 +11,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import scipy.interpolate as interp
 import sys
 from Alignment.AlignmentTools import *
+from Alignment.DTWGPU import *
+from AllTechniques import *
 
 ###################################################
 #           TOPC Utility Functions                #
@@ -220,116 +222,53 @@ def getConeHelix(c, NPeriods, pt):
     X[:, 2] = zt
     return X
 
+def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps):
+    np.random.seed(NPerClass)
+    WarpDict = getWarpDictionary(N)
+    Curves = {}
+    Curves['VivianiFigure8'] = lambda t: getVivianiFigure8(0.5, t)
+    Curves['TSCubic'] = lambda t: getTschirnhausenCubic(1, t)
+    Curves['TorusKnot23'] = lambda t: getTorusKnot(2, 3, t)
+    Curves['TorusKnot35'] = lambda t: getTorusKnot(3, 5, t)
+    Curves['PinchedCircle'] = lambda t: getPinchedCircle(t)
+    Curves['Lissajous32'] = lambda t: getLissajousCurve(1, 1, 3, 2, 0, t)
+    Curves['Lissajous54'] = lambda t: getLissajousCurve(1, 1, 5, 4, 0, t)
+    Curves['ConeHelix'] = lambda t: getConeHelix(1, 16, t)
+    Curves['Epicycloid1_3'] = lambda t: getEpicycloid(1.5, 0.5, t)
+    #Curves['Epicycloid1_4'] = lambda t: getEpicycloid(2, 0.5, t)
+
+    t1 = np.linspace(0, 1, N)
+    maxdistances = []
+    for name in Curves:
+        curve = Curves[name]
+        X1 = curve(t1)
+        print "Making %s..."%name
+        tic = time.time()
+        for k in range(NPerClass):
+            t2 = getWarpingPath(WarpDict, K, False)
+            X2 = curve(t2)
+            #Introduce some metric distortion
+            (x, Bumps) = addRandomBumps(X2, Kappa, NRelMag, NBumps)
+            diff = np.sqrt(np.sum((x-X2)**2, 1))
+            maxdistances.append(np.max(diff))
+            X2 = x
+
+        print "Elapsed Time: ", time.time() - tic
+
+    return Xs
+
+if __name__ == '__main__':
+    initParallelAlgorithms()
+    eng = initMatlabEngine()
+
+    t1 = np.linspace(0, 1, 200)
+    t2 = t1**2
+    X1 = getVivianiFigure8(0.5, t1)
+    X2 = getVivianiFigure8(0.5, t2)
+    #getIBDTWAlignment(X1, X2, doPlot = True)
+    doAllAlignments(eng, X1, X2, t2, drawPaths = True)
 
 if __name__ == '__main__2':
-    np.random.seed(20)
-    D = getWarpDictionary(200)
-    plt.figure(figsize=(16, 10))
-#    plt.subplot(2, 4, 1)
-#    t = np.linspace(0, 1, 200)
-#    plt.plot(t)
-#    plt.title("Original Parameterization")
-#    plt.subplot(2, 4, 5)
-#    X = getTorusKnot(3, 5, t)
-#    SSM = getCSM(X, X)
-#    plt.imshow(SSM, cmap = 'afmhot', interpolation = 'nearest')
-#    plt.title("Original SSM")
-    for i in range(3):
-        plt.subplot(2, 3, i+1)
-        t = getWarpingPath(D, 3, True)
-        #plt.plot(t)
-        plt.title("Warping Path %i"%(i+1))
-        X = getTorusKnot(3, 5, t)
-        SSM = getCSM(X, X)
-        plt.subplot(2, 3, 4+i)
-        plt.imshow(SSM, cmap = 'afmhot', interpolation = 'nearest')
-        plt.title("SSM %i"%(i+1))
-    plt.savefig("RandomWarpingPaths.svg", bbox_inches = 'tight')
-
-if __name__ == "__main__2":
-    plt.figure(figsize=(7, 3))
-    for i in [7, 8]:
-        plt.clf()
-        np.random.seed(i)
-        N = 400
-        t = np.linspace(0, 1, N+1)[0:N]
-        Kappa = 0.1
-        NRelMag = 2
-        NBumps = 4
-        X = np.zeros((N, 2))
-        X[:, 0] = np.cos(2*np.pi*t)
-        X[:, 1] = np.sin(4*np.pi*t)
-        (Y, Bumps) = addRandomBumps(X, Kappa, NRelMag, NBumps)
-        
-        diff = np.sqrt(np.sum((X-Y)**2, 1))
-        maxdistance = np.max(diff)
-        #Do critical point time warping
-        D = getCSM(Y, Y)
-        diam = np.max(D)
-        
-        plt.subplot(121)
-        plt.scatter(Y[:, 0], Y[:, 1], 20, np.arange(Y.shape[0]), cmap='Spectral', edgecolor='none')
-        plt.hold(True)
-        plt.scatter(Bumps[:, 0], Bumps[:, 1], 100, 'r')
-        plt.axis('equal')
-        ax = plt.gca()
-        ax.set_axis_bgcolor((0.15, 0.15, 0.15))
-        ax.set_xticks([])
-        ax.set_yticks([])
-        D = getSSM(Y)
-        plt.title("r = %.3g"%(maxdistance/diam))
-        plt.subplot(122)
-        plt.imshow(D, cmap = 'afmhot', interpolation = 'nearest')
-        plt.axis('off')
-        plt.title("SSM")
-        plt.savefig("Figure8Distorted%i.svg"%i, bbox_inches = 'tight')
-
-
-if __name__ == "__main__":
-    N = 400
-    t = np.linspace(0, 1, N)
-    Xs = {}
-    Xs['VivianiFigure8'] = getVivianiFigure8(0.5, t)
-    Xs['TSCubic'] = getTschirnhausenCubic(1, t)
-    Xs['TorusKnot23'] = getTorusKnot(2, 3, t)
-    Xs['TorusKnot35'] = getTorusKnot(3, 5, t)
-    Xs['PinchedCircle'] = getPinchedCircle(t)
-    Xs['Lissajous32'] = getLissajousCurve(1, 1, 3, 2, 0, t)
-    Xs['Lissajous54'] = getLissajousCurve(1, 1, 5, 4, 0, t)
-    Xs['ConeHelix'] = getConeHelix(1, 16, t)
-    Xs['Epicycloid1_3'] = getEpicycloid(1.5, 0.5, t)
-    Xs['Epicycloid1_4'] = getEpicycloid(2, 0.5, t)
-    Xs['Epicycloid1_20'] = getEpicycloid(2, 0.1, t)
-
-    fig = plt.figure(figsize=(15, 4))
-    i = 1
-    for Curve in Xs:
-        plt.clf()
-        X = Xs[Curve]
-        SSM = getSSM(X)
-        if X.shape[1] > 2:
-            ax = fig.add_subplot(131, projection='3d')
-            ax.plot(X[:, 0], X[:, 1], X[:, 2])
-        else:
-            plt.subplot(131)
-            plt.plot(X[:, 0], X[:, 1])
-        plt.title(Curve)
-        plt.subplot(132)
-        plt.imshow(SSM, interpolation = 'none', cmap='afmhot')
-        #SSMD = np.sign(SSM[:, 1::] - SSM[:, 0:-1])
-        idx = np.argsort(SSM, 1)
-        SSMD = get2DRankSSM(SSM)
-        plt.subplot(133)
-        plt.imshow(SSMD, interpolation = 'none', cmap = 'gray')
-        plt.savefig("%s.png"%Curve, bbox_inches = 'tight')
-        i += 1
-
-
-if __name__ == "__main__2":
-    np.random.seed(10)
-    X = makeRandomWalkCurve(4, 20, 2)
-    Y = smoothCurve(X, 20)
-    plt.subplot(1, 2, 1)
-    plt.scatter(Y[:, 0], Y[:, 1], 10, 'b')
-    plt.plot(Y[:, 0], Y[:, 1], 'r')
-    plt.show()
+    Kappa = 0.1
+    NRelMag = 2
+    NBumps = 4

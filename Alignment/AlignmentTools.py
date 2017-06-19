@@ -176,13 +176,13 @@ def computeAlignmentError(pP1, pP2, doPlot = False):
     for i in range(P1.shape[0]):
         [ii, jj] = [P1[i, 0], P1[i, 1]]
         [ii, jj] = [min(ii, M-1), min(jj, N-1)]
-        A1[ii, jj::] = 1
+        A1[ii, jj::] = 1.0
     for i in range(P2.shape[0]):
         [ii, jj] = [P2[i, 0], P2[i, 1]]
         [ii, jj] = [min(ii, M-1), min(jj, N-1)]
-        A2[ii, jj::] = 1
+        A2[ii, jj::] = 1.0
     A = np.abs(A1 - A2)
-    score = np.sum(A)/float(M*N)
+    score = np.sum(A)/(float(M)*float(N))
     plt.imshow(A)
     plt.hold(True)
     plt.scatter(pP1[:, 1], pP1[:, 0], 5, 'c', edgecolor = 'none')

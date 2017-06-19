@@ -8,8 +8,8 @@ from Alignment.DTWGPU import *
 if __name__ == '__main__':
     initParallelAlgorithms()
     np.random.seed(10)
-    M = 70
-    N = 70
+    M = 200
+    N = 200
     t1 = np.linspace(0, 1, M)
     t2 = np.linspace(0, 1, N)
     t2 = t2**2

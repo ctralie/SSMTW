@@ -5,8 +5,6 @@ import matplotlib.pyplot as plt
 import os
 import matlab.engine
 
-#/opt/apps/MATLAB/R2012b/bin/matlab -nodisplay -r "songIdx=$SLURM_ARRAY_TASK_ID;BeatsPerWin=8;dim=200;representWithSelfDictionaries_SLURM;quit"
-
 def getCTWAlignments(eng, X1, X2):
     """
     Wrap around the CTW library to compute warping paths between
@@ -21,6 +19,14 @@ def getCTWAlignments(eng, X1, X2):
     res = sio.loadmat("ctw/matlabResults.mat")
     os.remove("ctw/Xs.mat")
     os.remove("ctw/matlabResults.mat")
+    toRemove = []
+    for k in res.keys():
+        if not k[0] == 'P':
+            toRemove.append(k)
+        else:
+            res[k] = res[k] - 1 #Matlab is 1-indexed
+    for k in toRemove:
+        del res[k]
     return res
 
 def initMatlabEngine():
@@ -39,18 +45,17 @@ def testCTWAlignments(eng):
     X2 = np.zeros((N, 2))
     X2[:, 0] = np.cos(2*np.pi*t2)
     X2[:, 1] = np.sin(4*np.pi*t2)
-    
-    res = getCTWAlignments(eng, X1, X2)
-    P = res['PCTW']
-    plt.plot(P[:, 0], P[:, 1], 'b.')
+
+    Ps = getCTWAlignments(eng, X1, X2)
+    types = Ps.keys()
     plt.hold(True)
-    P = res['PDTW']
-    plt.plot(P[:, 0], P[:, 1], 'r.')
-    P = res['PGTW']
-    plt.plot(P[:, 0], P[:, 1], 'k.')
-    plt.legend({'CTW', 'DTW', 'GTW'})
+    for i in range(len(types)):
+        print types[i]
+        P = Ps[types[i]]
+        plt.plot(P[:, 0], P[:, 1])
+    plt.legend([t[1::] for t in types])
     plt.show()
 
 if __name__ == '__main__':
     eng = initMatlabEngine()
-    testCTWAlignments(eng)   
+    testCTWAlignments(eng)
