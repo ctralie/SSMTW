@@ -4,16 +4,33 @@
 %   modify  -  Chris Tralie (chris.tralie@gmail.com), 06-16-2017
 
 function [] = extractAlignments()
-    addpath('ctw');
+    addpath(genpath('ctw'));
+    addpath(genpath('.'));
     load('Xs.mat');
 
     addPath;
     prSet(1);
-
+    
+    Y1 = cmdscale(pdist2(X1, X1));
+    Y2 = cmdscale(pdist2(X2, X2));
+    if ~(size(Y1, 2) == size(Y2, 2))
+        dim = max(size(Y1, 2), size(Y2, 2));
+        temp = zeros(size(Y1, 1), dim);
+        temp(:, 1:size(Y1, 2)) = Y1;
+        Y1 = temp;
+        temp = zeros(size(Y2, 1), dim);
+        temp(:, 1:size(Y2, 2)) = Y2;
+        Y2 = temp;
+    end
+    
     %% Setup time series
     Xs = cell(1, 2);
     Xs{1} = X1';
     Xs{2} = X2';
+    
+    Ys = cell(1, 2);
+    Ys{1} = Y1';
+    Ys{2} = Y2';
 
     %% src parameter
     l = 300; % #frame of the latent sequence (Z)
@@ -35,15 +52,15 @@ function [] = extractAlignments()
     aliUtw = utw(Xs, bas, aliT);
 
     %% dtw
-    aliDtw = dtw(Xs, aliT, parDtw);
+    aliDtw = dtw(Ys, aliT, parDtw);
     PDTW = aliDtw.P;
 
     %% ddtw
-    aliDdtw = ddtw(Xs, aliT, parDtw);
+    aliDdtw = ddtw(Ys, aliT, parDtw);
     PDDTW = aliDdtw.P;
 
     %% imw
-    aliImw = pimw(Xs, aliUtw, aliT, parImw, parDtw);
+    aliImw = pimw(Ys, aliUtw, aliT, parImw, parDtw);
     PIMW = aliImw.P;
 
     %% ctw

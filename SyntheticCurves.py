@@ -223,7 +223,18 @@ def getConeHelix(c, NPeriods, pt):
     return X
 
 def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps):
+    """
+    :param N: Number of points per synthetic curve
+    :param NPerClass: Number of warped sampled curves per class
+    :param K: Number of basis elements to combine (complexity of warping path)
+    :param Kappa: Fraction of nearest neighbors to use when making bump
+    :param NRelMag: Controls how large the bumps are
+    :param NBumps: Number of bumps to add
+    """
+    initParallelAlgorithms()
+    eng = initMatlabEngine()
     np.random.seed(NPerClass)
+
     WarpDict = getWarpDictionary(N)
     Curves = {}
     Curves['VivianiFigure8'] = lambda t: getVivianiFigure8(0.5, t)
@@ -239,7 +250,9 @@ def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps):
 
     t1 = np.linspace(0, 1, N)
     maxdistances = []
+    AllErrors = {}
     for name in Curves:
+        AllErrors = {}
         curve = Curves[name]
         X1 = curve(t1)
         print "Making %s..."%name
@@ -251,13 +264,20 @@ def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps):
             (x, Bumps) = addRandomBumps(X2, Kappa, NRelMag, NBumps)
             diff = np.sqrt(np.sum((x-X2)**2, 1))
             maxdistances.append(np.max(diff))
+            #Apply a random rigid transformation
+            x = applyRandomRigidTransformation(x)
             X2 = x
+            (errors, Ps) = doAllAlignments(eng, X1, X2, t2)
+            types = errors.keys()
+            for t in types:
+                if not t in AllErrors:
+                    AllErrors[t] = np.zeros(NPerClass)
+                AllErrors[t][k] = errors[t]
+        sio.savemat("%sErrors.mat"%name, AllErrors)
+        print "Elapsed Time %s: "%name, time.time() - tic
+    return AllErrors
 
-        print "Elapsed Time: ", time.time() - tic
-
-    return Xs
-
-if __name__ == '__main__':
+if __name__ == '__main__2':
     initParallelAlgorithms()
     eng = initMatlabEngine()
 
@@ -266,9 +286,13 @@ if __name__ == '__main__':
     X1 = getVivianiFigure8(0.5, t1)
     X2 = getVivianiFigure8(0.5, t2)
     #getIBDTWAlignment(X1, X2, doPlot = True)
-    doAllAlignments(eng, X1, X2, t2, drawPaths = True)
+    doAllAlignments(eng, X1, X2, t2, drawPaths = True, drawAlignmentScores = True)
 
-if __name__ == '__main__2':
+if __name__ == '__main__':
+    N = 200
+    NPerClass = 200
+    K = 3
     Kappa = 0.1
     NRelMag = 2
-    NBumps = 4
+    NBumps = 2
+    AllErrors = doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps)

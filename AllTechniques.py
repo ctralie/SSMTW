@@ -67,7 +67,7 @@ def getIBDTWAlignment(X1, X2, useGPU = True, normFn = get2DRankSSM, Verbose = Fa
         plt.title("CSWM Normed")
     return (path, pathN)
 
-def doAllAlignments(eng, X1, X2, t2, useGPU = True, drawPaths = False):
+def doAllAlignments(eng, X1, X2, t2, useGPU = True, drawPaths = False, drawAlignmentScores = False):
     tic = time.time()
     (PIBDTW, PIBDTWN) = getIBDTWAlignment(X1, X2, useGPU = useGPU)
     timeIBDTW = time.time() - tic
@@ -85,8 +85,8 @@ def doAllAlignments(eng, X1, X2, t2, useGPU = True, drawPaths = False):
     PGT[:, 0] = t2
     PGT[:, 1] = t1
 
+    types = Ps.keys()
     if drawPaths:
-        types = Ps.keys()
         plt.hold(True)
         for i in range(len(types)):
             print types[i]
@@ -96,7 +96,11 @@ def doAllAlignments(eng, X1, X2, t2, useGPU = True, drawPaths = False):
         plt.legend([t[1::] for t in types] + ["GT"])
         plt.show()
 
+    errors = {}
     for ptype in types:
-        err = computeAlignmentError(Ps[ptype], PGT, doPlot = True)
-        plt.show()
-        print "Err %s: %g"%(ptype, err)
+        err = computeAlignmentError(Ps[ptype], PGT, doPlot = drawAlignmentScores)
+        if drawAlignmentScores:
+            plt.show()
+        errors[ptype] = err
+
+    return (errors, Ps)

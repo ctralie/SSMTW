@@ -5,6 +5,8 @@ import sys
 from Geom3D.PolyMesh import *
 from SlidingWindowVideoTDA.VideoTools import *
 from Alignment.AlignmentTools import *
+from Alignment.DTWGPU import *
+from AllTechniques import *
 import subprocess
 import glob
 import time
@@ -64,7 +66,7 @@ def getShapeShellHistogram(Ps, Ns, NShells, RMax, SPoints):
     :param Ns: 3 x N array of normals (not needed here but passed along for consistency)
     :param NShells: number of shells)
     :param RMax: Maximum radius
-    :param SPoints: A 3 x S array of points sampled evenly on the unit sphere 
+    :param SPoints: A 3 x S array of points sampled evenly on the unit sphere
                     (get these with the function "getSphereSamples")
     """
     NSectors = SPoints.shape[1] #A number of sectors equal to the number of
@@ -127,7 +129,7 @@ def precomputeEuclideanEmbeddings():
                 print "Already done %s.  Skipping..."%filename
             else:
                 np.random.seed(100)
-                #Load in mesh and compute D2
+                #Load in mesh and compute shell histogram
                 NShells = 20
                 I = loadMeshVideoFolder(foldername, NShells)
                 SSM = np.array(getSSM(I), dtype=np.float32)
@@ -140,3 +142,37 @@ def precomputeEuclideanEmbeddings():
                 (I, IDims) = loadVideoFolder(foldername)
                 I = getPCAVideo(I)
                 sio.savemat(filename, {"I":I, "IDims":IDims})
+
+def runAlignmentExperiments(eng, seed, K = 10, NPerFace = 10):
+    """
+    Run experiments randomly warping the video and trying to align that
+    to the 3D histograms
+    """
+    np.random.seed(seed)
+    emotions = ["Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise"]
+    NFaces = 9
+    AllErrors = {}
+    for e in range(len(emotions)):
+        emotion = emotions[e]
+        for i in range(1, NFaces+1):
+            print "Doing %s face %i..."%(emotion, i)
+            foldername = "BU_4DFE/F%.3i/%s"%(i, emotion)
+            I1 = sio.loadmat("%s/SSM.mat"%foldername)['I']
+            I2 = sio.loadmat("%s/VideoPCA.mat"%foldername)['I']
+            WarpDict = getWarpDictionary(I2.shape[0])
+            for expNum in range(NPerFace):
+                t2 = getWarpingPath(WarpDict, K, False)
+                I2Warped = getInterpolatedEuclideanTimeSeries(I2, t2)
+                sio.savemat("BU.mat", {"I1":I1, "I2Warped":I2Warped, "t2":t2})
+                (errors, Ps) = doAllAlignments(eng, I1, I2Warped, t2)
+                types = errors.keys()
+                for t in types:
+                    if not t in AllErrors:
+                        AllErrors[t] = np.zeros((len(emotions), NFaces, NPerFace))
+                    AllErrors[t][e][i-1][expNum] = errors[t]
+            sio.savemat("BUErrors.mat", AllErrors)
+
+if __name__ == '__main__':
+    initParallelAlgorithms()
+    eng = initMatlabEngine()
+    runAlignmentExperiments(eng, 1, K = 10, NPerFace = 10)
