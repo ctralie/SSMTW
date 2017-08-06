@@ -164,7 +164,9 @@ def runAlignmentExperiments(eng, seed, K = 10, NPerFace = 10):
                 t2 = getWarpingPath(WarpDict, K, False)
                 I2Warped = getInterpolatedEuclideanTimeSeries(I2, t2)
                 sio.savemat("BU.mat", {"I1":I1, "I2Warped":I2Warped, "t2":t2})
-                (errors, Ps) = doAllAlignments(eng, I1, I2Warped, t2)
+                plt.clf()
+                (errors, Ps) = doAllAlignments(eng, I1, I2Warped, t2, drawPaths = True)
+                plt.savefig("%i_%i_%i.svg"%(e, i, expNum))
                 types = errors.keys()
                 for t in types:
                     if not t in AllErrors:

@@ -86,6 +86,14 @@ def doAllAlignments(eng, X1, X2, t2, useGPU = True, drawPaths = False, drawAlign
     PGT[:, 1] = t1
 
     types = Ps.keys()
+    errors = {}
+    for ptype in types:
+        err = computeAlignmentError(Ps[ptype], PGT, doPlot = drawAlignmentScores)
+        if drawAlignmentScores:
+            plt.show()
+        errors[ptype] = err
+    
+    types = ['PGTW', 'PIBDTWN']
     if drawPaths:
         plt.hold(True)
         for i in range(len(types)):
@@ -93,14 +101,6 @@ def doAllAlignments(eng, X1, X2, t2, useGPU = True, drawPaths = False, drawAlign
             P = Ps[types[i]]
             plt.plot(P[:, 0], P[:, 1])
         plt.plot(PGT[:, 0], PGT[:, 1], 'k', lineWidth = 4, lineStyle = '--')
-        plt.legend([t[1::] for t in types] + ["GT"])
-        plt.show()
-
-    errors = {}
-    for ptype in types:
-        err = computeAlignmentError(Ps[ptype], PGT, doPlot = drawAlignmentScores)
-        if drawAlignmentScores:
-            plt.show()
-        errors[ptype] = err
+        plt.legend(["%s %.3g"%(t[1::], errors[t]) for t in types] + ["GT"])
 
     return (errors, Ps)

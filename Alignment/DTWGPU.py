@@ -90,7 +90,7 @@ def doIBDTWGPU(SSMA, SSMB, returnCSM = False, printElapsedTime = False):
     else:
         res = doDTWGPU(CSM, 0, 0)
         if printElapsedTime:
-            print "Elapsed Time GPU: ", time.time() - tic
+            print("Elapsed Time GPU: ", time.time() - tic)
         return res
 
 if __name__ == '__main__':
@@ -119,13 +119,13 @@ if __name__ == '__main__':
 
     tic = time.time()
     resC = SAC.constrainedDTW(CSM, ci, cj)
-    print "Elapsed Time C: ", time.time() - tic
+    print("Elapsed Time C: ", time.time() - tic)
 
     CSM = np.array(CSM, dtype = np.float32)
     CSM = gpuarray.to_gpu(CSM)
     resGPU = doDTWGPU(CSM, ci, cj)
 
 
-    print "Python Result: %g"%resPython
-    print "C Result: %g"%resC
-    print "GPU Result: %g"%resGPU
+    print("Python Result: %g"%resPython)
+    print("C Result: %g"%resC)
+    print("GPU Result: %g"%resGPU)

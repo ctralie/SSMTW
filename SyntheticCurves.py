@@ -255,7 +255,7 @@ def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps):
         AllErrors = {}
         curve = Curves[name]
         X1 = curve(t1)
-        print "Making %s..."%name
+        print("Making %s..."%name)
         tic = time.time()
         for k in range(NPerClass):
             t2 = getWarpingPath(WarpDict, K, False)
@@ -274,7 +274,7 @@ def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps):
                     AllErrors[t] = np.zeros(NPerClass)
                 AllErrors[t][k] = errors[t]
         sio.savemat("%sErrors.mat"%name, AllErrors)
-        print "Elapsed Time %s: "%name, time.time() - tic
+        print("Elapsed Time %s: "%name, time.time() - tic)
     return AllErrors
 
 if __name__ == '__main__2':

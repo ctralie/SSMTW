@@ -183,9 +183,10 @@ def computeAlignmentError(pP1, pP2, doPlot = False):
         A2[ii, jj::] = 1.0
     A = np.abs(A1 - A2)
     score = np.sum(A)/(float(M)*float(N))
-    plt.imshow(A)
-    plt.hold(True)
-    plt.scatter(pP1[:, 1], pP1[:, 0], 5, 'c', edgecolor = 'none')
-    plt.scatter(pP2[:, 1], pP2[:, 0], 5, 'r', edgecolor = 'none')
-    plt.title("Score = %g"%score)
+    if doPlot:
+        plt.imshow(A)
+        plt.hold(True)
+        plt.scatter(pP1[:, 1], pP1[:, 0], 5, 'c', edgecolor = 'none')
+        plt.scatter(pP2[:, 1], pP2[:, 0], 5, 'r', edgecolor = 'none')
+        plt.title("Score = %g"%score)
     return score
