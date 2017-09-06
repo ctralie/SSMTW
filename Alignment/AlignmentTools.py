@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.interpolate as interp
 import matplotlib.pyplot as plt
+import scipy.sparse as sparse
 
 def getCSM(X, Y):
     XSqr = np.sum(X**2, 1)
@@ -8,6 +9,37 @@ def getCSM(X, Y):
     C = XSqr[:, None] + YSqr[None, :] - 2*X.dot(Y.T)
     C[C < 0] = 0
     return np.sqrt(C)
+
+def CSMToBinary(D, Kappa):
+    """
+    Turn a cross-similarity matrix into a binary cross-simlarity matrix
+    If Kappa = 0, take all neighbors
+    If Kappa < 1 it is the fraction of mutual neighbors to consider
+    Otherwise Kappa is the number of mutual neighbors to consider
+    """
+    N = D.shape[0]
+    M = D.shape[1]
+    if Kappa == 0:
+        return np.ones((N, M))
+    elif Kappa < 1:
+        NNeighbs = int(np.round(Kappa*M))
+    else:
+        NNeighbs = Kappa
+    J = np.argpartition(D, NNeighbs, 1)[:, 0:NNeighbs]
+    I = np.tile(np.arange(N)[:, None], (1, NNeighbs))
+    V = np.ones(I.size)
+    [I, J] = [I.flatten(), J.flatten()]
+    ret = sparse.coo_matrix((V, (I, J)), shape=(N, M))
+    return ret.toarray()
+
+def CSMToBinaryMutual(D, Kappa):
+    """
+    Take the binary AND between the nearest neighbors in one direction
+    and the other
+    """
+    B1 = CSMToBinary(D, Kappa)
+    B2 = CSMToBinary(D.T, Kappa).T
+    return B1*B2
 
 def getSSM(X):
     return getCSM(X, X)
