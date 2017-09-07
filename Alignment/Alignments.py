@@ -64,7 +64,7 @@ def DTWCSM(CSM):
     """
     Perform dynamic time warping on a cros-similarity matrix
     :param CSM: An MxN cross-similarity matrix
-    :return ((M+1)x(N+1) dynamic programming matrix, CSM, backpointers, 
+    :return ((M+1)x(N+1) dynamic programming matrix, CSM, backpointers,
             optimal path)
     """
     M = CSM.shape[0]
@@ -113,7 +113,7 @@ def DTW(X, Y, distfn):
     return DTWCSM(CSM)
 
 
-def constrainedDTW(X, Y, distfn, ci, cj):
+def DTWConstrained(X, Y, distfn, ci, cj):
     """
     Perform constrained dynamic time warping between two TOPCs
     :param X: Mxd matrix
@@ -121,7 +121,7 @@ def constrainedDTW(X, Y, distfn, ci, cj):
     :param distfn: Function for computing distances betwen points
     :param ci: Index in X that must be matched to cj
     :param cj: Index in Y that must be matched to ci
-    :returns (Dynamic Programming Matrix, Cross-Similarity matrix, 
+    :returns (Dynamic Programming Matrix, Cross-Similarity matrix,
                 None, optimal path)
     """
     print "Constraint: (%i, %i)"%(ci, cj)
@@ -160,7 +160,7 @@ def drawPointers(fout, backpointers, M, N):
 
 def doIBDTW(SSMA, SSMB):
     """
-    Do isometry blind dynamic time warping between two
+    Do partial isometry blind dynamic time warping between two
     self-similarity matrices
     :param SSMA: MXM self-similarity matrix
     :param SSMB: NxN self-similarity matrix
@@ -174,11 +174,9 @@ def doIBDTW(SSMA, SSMB):
         for j in range(N):
             row = SSMA[i, :]
             col = SSMB[:, j]
-            CSM = np.zeros((len(row), len(col)))
-            CSM = CSM + row[:, None]
-            CSM = CSM - col[None, :]
+            CSM = row[:, None] - col[None, :]
             CSM = np.abs(CSM)
-            D[i, j] = SAC.constrainedDTW(CSM, i, j)
+            D[i, j] = SAC.DTWConstrained(CSM, i, j)
     return D
 
 def SMWat(CSM, matchFunction, hvPenalty = -0.2, backtrace = False, backidx = [], animate = False):
@@ -187,7 +185,7 @@ def SMWat(CSM, matchFunction, hvPenalty = -0.2, backtrace = False, backidx = [],
     :param CSM: A binary N x M cross-similarity matrix
     :param matchFunction: A function that scores matching/mismatching
     :param hvPenalty: The amount by which to penalize horizontal/vertical moves
-    :returns (Distance (scalar), (N+1)x(M+1) dynamic programming matrix, 
+    :returns (Distance (scalar), (N+1)x(M+1) dynamic programming matrix,
               optimal subsequence alignment path)
     """
     N = CSM.shape[0]+1
@@ -212,7 +210,7 @@ def SMWat(CSM, matchFunction, hvPenalty = -0.2, backtrace = False, backidx = [],
                 maxD = D[i, j]
                 if backtrace:
                     maxidx = [i, j]
-    
+
     res = {'maxD':maxD, 'D':D}
     #Backtrace starting at the largest index
     if backtrace:
@@ -237,10 +235,27 @@ def SMWat(CSM, matchFunction, hvPenalty = -0.2, backtrace = False, backidx = [],
                 plt.axis('off')
                 plt.savefig("BackTrace%i.png"%P.shape[0], bbox_inches = 'tight')
         res['path'] = path
-        
+
     return res
 
-def SMWatConstrained(CSM, ci, cj, matchFunction, hvPenalty = -0.2, backtrace = False):
+def doIBSMWat(SSMA, SSMB, matchfn, hvPenalty = -0.3):
+    #matchfn = lambda(x): {0:-3, 1:2}[x]
+    #hvPenalty = -0.3
+
+    M = SSMA.shape[0]
+    N = SSMB.shape[0]
+    D = np.zeros((M, N))
+    for i in range(M):
+        print "Finished row %i of %i"%(i, M)
+        for j in range(N):
+            row = SSMA[i, :]
+            col = SSMB[:, j]
+            CSM = row[:, None] - col[None, :]
+            CSM = np.abs(CSM)
+            D[i, j] = SAC.DTWConstrained(CSM, i, j)
+    return D
+
+def SMWatConstrained(CSM, ci, cj, matchFunction, hvPenalty = -0.3, backtrace = False):
     """
     Implicit Smith Waterman alignment on a binary cross-similarity matrix
     with constraints
@@ -255,9 +270,12 @@ def SMWatConstrained(CSM, ci, cj, matchFunction, hvPenalty = -0.2, backtrace = F
     CSM2 = np.fliplr(np.flipud(CSM[ci::, cj::]))
     res2 = SMWat(CSM2, matchFunction, hvPenalty, backtrace = backtrace, backidx = [CSM2.shape[0], CSM2.shape[1]])
     res = {'score':res1['D'][-1, -1] + res2['D'][-1, -1]}
+    res['D1'] = res1['D']
+    res['D2'] = res2['D']
     if backtrace:
         path2 = [[ci+1+(CSM2.shape[0]+1-x), cj+1+(CSM2.shape[1]+1-y)] for [x, y] in res2['path']]
         res['path'] = res1['path'] + path2
+    #res['score'] = res2['D'][-1, -1]
     return res
 
 def SMWatExampleBinary():
@@ -275,56 +293,52 @@ def SMWatExampleBinary():
     CSM = getCSM(X1, X2)
     CSM = CSMToBinaryMutual(CSM, Kappa)
 
-    plt.figure(figsize=(8, 8))    
+    plt.figure(figsize=(8, 8))
     [ci, cj] = [100, 100]
-    
-    matchfn = lambda(x): {0:-3, 1:2}[x]
+
+    matchfn = lambda x: {0:-3, 1:2}[x]
     res = SMWatConstrained(CSM, ci, cj, matchfn, hvPenalty = -1.8, backtrace = True)
     path = np.array(res['path'])
     plt.imshow(CSM, cmap = 'afmhot', interpolation = 'none')
     plt.scatter(path[:, 1], path[:, 0], 5, edgecolor = 'none')
     plt.scatter([cj], [ci], 20, 'r', edgecolor = 'none')
     plt.title("Score = %g"%res['score'])
-    plt.savefig("Constrained_%i_%i.svg"%(ci, cj), bbox_inches = 'tight')    
+    plt.savefig("Constrained_%i_%i.svg"%(ci, cj), bbox_inches = 'tight')
 
 
 def SMWatExampleSSMRows():
     Kappa = 0.05
     np.random.seed(100)
-    t = np.linspace(0, 1, 300)
+    t = np.linspace(0, 1, 150)
     t1 = t
-    X1 = 0.3*np.random.randn(400, 2)
+    X1 = 0.3*np.random.randn(200, 2)
     X1[50:50+len(t1), 0] = np.cos(2*np.pi*t1)
     X1[50:50+len(t1), 1] = np.sin(4*np.pi*t1)
     t2 = t**2
-    X2 = 0.3*np.random.randn(350, 2)
+    X2 = 0.3*np.random.randn(180, 2)
     X2[0:len(t2), 0] = np.cos(2*np.pi*t2)
     X2[0:len(t2), 1] = np.sin(4*np.pi*t2)
-    
+
     SSMA = get2DRankSSM(getSSM(X1))
     SSMB = get2DRankSSM(getSSM(X2))
     M = SSMA.shape[0]
     N = SSMB.shape[0]
 
-    [ci, cj] = [100, 120]
+    [ci, cj] = [60, 60]
     row1 = SSMA[ci, :]
     row2 = SSMB[cj, :]
     CSM = np.abs(row1[:, None] - row2[None, :])
     matchfn = lambda x: np.exp(-x/(0.3**2))-0.6
+    D = matchfn(CSM)
     hvPenalty = -0.3
-    
+
+    tic = time.time()
     res = SMWatConstrained(CSM, ci, cj, matchfn, hvPenalty, backtrace = True)
-    
-    """
-    CSM = np.zeros((M, N))
-    for i in range(M):
-        print i
-        for j in range(N):
-            print("(%i, %i)"%(i, j))
-            res = SMWatConstrained(CSM, i, j, matchfn)
-            CSM[i, j] = res['score']
-        sio.savemat("CSM.mat", {"CSM":CSM})
-    """
+    print("Elapsed Time Python: ", time.time() - tic)
+    tic = time.time()
+    d = SAC.SMWatConstrained(D, ci, cj, hvPenalty)
+    print("Elapsed Time C: ", time.time() - tic)
+    print("Python Answer: %g\nC Answer: %g"%(res['score'], d))
 
     #"""
     plt.figure(figsize=(12, 12))
@@ -336,7 +350,6 @@ def SMWatExampleSSMRows():
     plt.plot(row1, 'b')
     plt.plot(row2, 'r')
     plt.subplot(224)
-    D = matchfn(CSM)
     plt.imshow(D, cmap = 'afmhot', interpolation = 'nearest')
     P = np.array(res['path'])
     plt.scatter(P[:, 1], P[:, 0], 5, 'b', edgecolor = 'none')
@@ -344,6 +357,20 @@ def SMWatExampleSSMRows():
     plt.title("Score = %g"%res['score'])
     plt.savefig("Constrained_%i_%i.svg"%(ci, cj), bbox_inches = 'tight')
     #"""
+
+
+    """
+    CSM = np.zeros((M, N))
+    for i in range(M):
+        print("Doing row %i of %i"%(i, M))
+        for j in range(N):
+            row1 = SSMA[i, :]
+            row2 = SSMB[j, :]
+            C = np.abs(row1[:, None] - row2[None, :])
+            C = matchfn(C)
+            CSM[i, j] = SAC.SMWatConstrained(C, i, j, hvPenalty)
+        sio.savemat("CSM.mat", {"CSM":CSM})
+    """
 
 
 def LevenshteinExample():
@@ -396,10 +423,10 @@ def DTWExample():
     print "Unconstrained DTW: ", D[-1, -1]
 
     constraint = [20, 30]
-    (D, CSM, backpointers, path) = constrainedDTW(X, Y, lambda x,y: np.sqrt(np.sum((x-y)**2)), constraint[0], constraint[1])
+    (D, CSM, backpointers, path) = DTWConstrained(X, Y, lambda x,y: np.sqrt(np.sum((x-y)**2)), constraint[0], constraint[1])
     print "Cost Python: ", D[-1, -1]
     tic = time.time()
-    print "Cost C: ", SAC.constrainedDTW(CSM, constraint[0], constraint[1])
+    print "Cost C: ", SAC.DTWConstrained(CSM, constraint[0], constraint[1])
     toc = time.time()
     print "Elapsed Time: ", toc-tic
 
@@ -440,7 +467,7 @@ def DTWExample():
 
     plt.savefig("DTWExample_%i_%i.svg"%(constraint[0], constraint[1]), bbox_inches='tight')
     plt.show()
-    
+
 if __name__ == '__main__':
     #LevenshteinExample()
     #DTWExample()

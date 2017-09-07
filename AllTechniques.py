@@ -16,6 +16,7 @@ def getIBDTWAlignment(X1, X2, useGPU = True, normFn = get2DRankSSM, Verbose = Fa
     SSM1Norm = np.array(normFn(SSM1), dtype = np.float32)
     SSM2Norm = np.array(normFn(SSM2), dtype = np.float32)
     if useGPU:
+        import pycuda.gpuarray as gpuarray
         D = doIBDTWGPU(gpuarray.to_gpu(SSM1), gpuarray.to_gpu(SSM2), returnCSM = True)
         DNorm = doIBDTWGPU(gpuarray.to_gpu(SSM1Norm), gpuarray.to_gpu(SSM2Norm), returnCSM = True)
     else:
