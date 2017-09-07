@@ -239,9 +239,6 @@ def SMWat(CSM, matchFunction, hvPenalty = -0.2, backtrace = False, backidx = [],
     return res
 
 def doIBSMWat(SSMA, SSMB, matchfn, hvPenalty = -0.3):
-    #matchfn = lambda(x): {0:-3, 1:2}[x]
-    #hvPenalty = -0.3
-
     M = SSMA.shape[0]
     N = SSMB.shape[0]
     D = np.zeros((M, N))
@@ -250,9 +247,10 @@ def doIBSMWat(SSMA, SSMB, matchfn, hvPenalty = -0.3):
         for j in range(N):
             row = SSMA[i, :]
             col = SSMB[:, j]
-            CSM = row[:, None] - col[None, :]
-            CSM = np.abs(CSM)
-            D[i, j] = SAC.DTWConstrained(CSM, i, j)
+            C = row[:, None] - col[None, :]
+            C = np.abs(C)
+            C = matchfn(C)
+            D[i, j] = SAC.SMWatConstrained(C, i, j, hvPenalty)
     return D
 
 def SMWatConstrained(CSM, ci, cj, matchFunction, hvPenalty = -0.3, backtrace = False):
@@ -358,19 +356,6 @@ def SMWatExampleSSMRows():
     plt.savefig("Constrained_%i_%i.svg"%(ci, cj), bbox_inches = 'tight')
     #"""
 
-
-    """
-    CSM = np.zeros((M, N))
-    for i in range(M):
-        print("Doing row %i of %i"%(i, M))
-        for j in range(N):
-            row1 = SSMA[i, :]
-            row2 = SSMB[j, :]
-            C = np.abs(row1[:, None] - row2[None, :])
-            C = matchfn(C)
-            CSM[i, j] = SAC.SMWatConstrained(C, i, j, hvPenalty)
-        sio.savemat("CSM.mat", {"CSM":CSM})
-    """
 
 
 def LevenshteinExample():

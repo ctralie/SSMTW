@@ -77,18 +77,17 @@ double SMWat(double* S, int M, int N, int i1, int j1, int i2, int j2,
     int A = diri*(i2 - i1) + 2;
     int B = dirj*(j2 - j1) + 2;
     D = malloc(A*B*sizeof(double));//Dynamic programming matrix
-    for (j = 1; j < B; j++) {
+    for (j = 0; j < B; j++) {
         //Fill first row with zero
         D[j] = 0;
     }
-    for (i = 1; i < A; i++) {
+    for (i = 0; i < A; i++) {
         //Fill first column with zero
         D[i*B] = 0;
     }
-    D[0] = 0.0;
     for (i = 1; i < A; i++) {
         for (j = 1; j < B; j++) {
-            d = S[(i1+diri*i-1)*N + (j1+dirj*j-1)];
+            d = S[(i1+diri*(i-1))*N + (j1+dirj*(j-1))];
             dul = d + D[(i-1)*B + (j-1)];
             dl = d + D[i*B + (j-1)] + hvPenalty;
             du = d + D[(i-1)*B + j] + hvPenalty;
@@ -101,7 +100,6 @@ double SMWat(double* S, int M, int N, int i1, int j1, int i2, int j2,
 }
 
 double SMWatConstrained(double* S, int M, int N, int ci, int cj, double hvPenalty) {
-    //return SMWat(S, M, N, M-1, N-1, ci, cj, hvPenalty);
     double ret = SMWat(S, M, N, 0, 0, ci, cj, hvPenalty);
     return ret + SMWat(S, M, N, M-1, N-1, ci, cj, hvPenalty);
 }
