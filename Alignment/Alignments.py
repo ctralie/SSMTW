@@ -273,7 +273,6 @@ def SMWatConstrained(CSM, ci, cj, matchFunction, hvPenalty = -0.3, backtrace = F
     if backtrace:
         path2 = [[ci+1+(CSM2.shape[0]+1-x), cj+1+(CSM2.shape[1]+1-y)] for [x, y] in res2['path']]
         res['path'] = res1['path'] + path2
-    #res['score'] = res2['D'][-1, -1]
     return res
 
 def SMWatExampleBinary():
@@ -305,7 +304,6 @@ def SMWatExampleBinary():
 
 
 def SMWatExampleSSMRows():
-    Kappa = 0.05
     np.random.seed(100)
     t = np.linspace(0, 1, 150)
     t1 = t
@@ -356,6 +354,12 @@ def SMWatExampleSSMRows():
     plt.savefig("Constrained_%i_%i.svg"%(ci, cj), bbox_inches = 'tight')
     #"""
 
+    CSM = doIBSMWat(SSMA, SSMB, matchfn, hvPenalty)
+    sio.savemat("CSM.mat", {"CSM":CSM})
+    plt.clf()
+    plt.imshow(CSM, cmap = 'afmhot', interpolation = 'nearest')
+    plt.title("IBSMWat")
+    plt.savefig("IBSMWat.svg", bbox_inches = 'tight')
 
 
 def LevenshteinExample():
