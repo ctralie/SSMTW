@@ -1,4 +1,4 @@
-__global__ void SMWatSSM(float* SSMA, float* SSMB, float* CSM, int M, int N, int diagLen, int diagLenPow2, float hvPenalty, int flip) {
+__global__ void SMWat(float* CSM, float* D, int M, int N, int diagLen, int diagLenPow2, float hvPenalty) {
     //Have circularly rotating system of 3 buffers
     extern __shared__ float x[]; //Circular buffer
     int off = 0;
@@ -10,9 +10,6 @@ __global__ void SMWatSSM(float* SSMA, float* SSMB, float* CSM, int M, int N, int
     int thisi, thisj;
     int idx;
     float val, score;
-    int ci = blockIdx.x;
-    int cj = blockIdx.y;
-    int finished = 0;
 
 
     //Figure out K (number of batches)
@@ -33,9 +30,6 @@ __global__ void SMWatSSM(float* SSMA, float* SSMB, float* CSM, int M, int N, int
 
     //Process each diagonal
     for (i = 0; i < N + M - 1; i++) {
-        if (finished) {
-            break;
-        }
         //Figure out the bounds of this diagonal
         i1 = i;
         j1 = 0;
@@ -63,12 +57,7 @@ __global__ void SMWatSSM(float* SSMA, float* SSMB, float* CSM, int M, int N, int
                 x[off*diagLen + idx] = -1;
                 continue;
             }
-            if (flip) {
-                val = SSMA[(M-ci)*M + (M-thisi)] - SSMB[(N-cj)*N + N-thisj];
-            }
-            else {
-                val = SSMA[ci*M + thisi] - SSMB[cj*N + thisj];
-            }
+            val = CSM[thisi*N + thisj];
             if (val < 0) {
                 val = val*-1.0f;
             }
@@ -111,10 +100,7 @@ __global__ void SMWatSSM(float* SSMA, float* SSMB, float* CSM, int M, int N, int
                 }
             }
             x[off*diagLen + idx] = score;
-            if (thisi == ci && thisj == cj) {
-                CSM[ci*N + cj] = score;
-                finished = 1;
-            }
+            D[thisi*N + thisj] = score;
         }
         off = (off + 2) % 3; //Cycle buffers
         __syncthreads();

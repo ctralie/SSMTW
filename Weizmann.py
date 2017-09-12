@@ -32,7 +32,7 @@ def getWeiAlignedMask(action):
     for idx in range(len(names)):
         if names[idx] == action:
             break
-    print "name = %s, idx = %i"%(action, idx)
+    print("name = %s, idx = %i"%(action, idx))
     I = X[idx]
     I = np.rollaxis(I, 2, 0)
     IDims = I.shape[1::]
@@ -98,7 +98,7 @@ if __name__ == '__main__2':
     X = sio.loadmat(WEIPATH + "/mask.mat")
     X = X['aligned_masks'][0][0]
     names = getWeiNamesFromStruct(X.dtype)
-    #print names
+    #print(names)
 
     for video in WEIVIDEOS:
         (I, IDims) = getWeiAlignedMask(video)

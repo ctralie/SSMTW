@@ -16,6 +16,7 @@ from pycuda.compiler import SourceModule
 
 DTW_ = None
 DTWSSM_ = None
+SMWat_ = None
 SMWatSSM_ = None
 getSumSquares_ = None
 finishCSM_ = None
@@ -34,6 +35,7 @@ def getResourceString(filename):
 def initParallelAlgorithms():
     global DTW_
     global DTWSSM_
+    global SMWat_
     global SMWatSSM_
 
     s = getResourceString("DTWGPU.cu")
@@ -44,9 +46,13 @@ def initParallelAlgorithms():
     mod = SourceModule(s)
     DTWSSM_ = mod.get_function("DTWSSM")
 
+    s = getResourceString("SMWatGPU.cu")
+    mod = SourceModule(s)
+    SMWat_ = mod.get_function("SMWat")
+
     s = getResourceString("SMWatSSMGPU.cu")
     mod = SourceModule(s)
-    SMWatSSM_ = mod.get_function("DTWSSM")
+    SMWatSSM_ = mod.get_function("SMWatSSM")
 
 def roundUpPow2(x):
     return np.array(int(2**np.ceil(np.log2(float(x)))), dtype=np.int32)
@@ -99,7 +105,24 @@ def doIBDTWGPU(SSMA, SSMB, returnCSM = False, printElapsedTime = False):
             print("Elapsed Time GPU: ", time.time() - tic)
         return res
 
-def doIBSMWatGPUHelper(SSMA, SSMB):
+def doSMWatGPU(CSM, hvPenalty):
+    #Minimum dimension of array can be at max size 1024
+    #for this scheme to fit in memory
+    M = CSM.shape[0]
+    N = CSM.shape[1]
+
+    D = np.zeros((M, N), dtype=np.float32)
+    D = gpuarray.to_gpu(D)
+
+    diagLen = np.array(min(M, N), dtype = np.int32)
+    diagLenPow2 = roundUpPow2(diagLen)
+    NThreads = min(diagLen, 512)
+    M = np.array(M, dtype=np.int32)
+    N = np.array(N, dtype=np.int32)
+    SMWat_(CSM, D, M, N, diagLen, diagLenPow2, block=(int(NThreads), 1, 1), grid=(1, 1), shared=12*diagLen)
+    return D.get()
+
+def doIBSMWatGPUHelper(SSMA, SSMB, hvPenalty, flip = False):
     """
     :param SSMA: MxM self-similarity matrix of first curve (gpuarray)
     :param SSMB: NxN self-similarity matrix of second curve (gpuarray)
@@ -116,18 +139,22 @@ def doIBSMWatGPUHelper(SSMA, SSMB):
 
     M = np.array(M, dtype=np.int32)
     N = np.array(N, dtype=np.int32)
+    pflip = np.array(0, dtype=np.int32)
+    if flip:
+        pflip = np.array(1, dtype=np.int32)
+    phvPenalty = np.array(hvPenalty, dtype = np.float32)
 
-    SMWatSSM_(SSMA, SSMB, CSM, M, N, diagLen, diagLenPow2, block=(int(NThreads), 1, 1), grid=(int(M), int(N)), shared=12*diagLen)
+    SMWatSSM_(SSMA, SSMB, CSM, M, N, diagLen, diagLenPow2, phvPenalty, pflip, block=(int(NThreads), 1, 1), grid=(int(M), int(N)), shared=12*diagLen)
     CSM = CSM.get()
     return CSM
 
 def flrud(A):
     return np.fliplr(np.flipud(A))
 
-def doIBSMWatGPU(SSMA, SSMB, printElapsedTime = False):
+def doIBSMWatGPU(SSMA, SSMB, hvPenalty, printElapsedTime = False):
     tic = time.time()
-    CSM = doIBSMWatGPUHelper(SSMA, SSMB)
-    #CSM = CSM + flrud(doIBSMWatGPUHelper(flrud(SSMA), flrud(SSMB)))
+    CSM = doIBSMWatGPUHelper(SSMA, SSMB, hvPenalty, False)
+    #CSM = CSM + flrud(doIBSMWatGPUHelper(SSMA, SSMB, hvPenalty, True))
     if printElapsedTime:
         print("Elapsed Time Smith Waterman GPU: %g"%(time.time() - tic))
     return CSM
@@ -151,7 +178,7 @@ def DTWGPUExample():
 
     tic = time.time()
     (DCPU, CSM, backpointers, involved) = DTWConstrained(X, Y, lambda x,y: np.sqrt(np.sum((np.array(x, dtype=np.float32)-np.array(y, dtype=np.float32))**2)), ci, cj)
-    # print "Elapsed Time Python: ", time.time() - tic
+    # print(Elapsed Time Python: %g"%(time.time() - tic))
     # DCPU = DCPU[1::, 1::]
     resPython = DCPU[-1, -1]
     CSM = getCSM(X, Y)
@@ -203,6 +230,21 @@ def IBSMWatGPUExample():
     initParallelAlgorithms()
 
     np.random.seed(100)
+
+    """
+    #Shorter example
+    t = np.linspace(0, 1, 30)
+    t1 = t
+    X1 = 0.3*np.random.randn(40, 2)
+    X1[5:5+len(t1), 0] = np.cos(2*np.pi*t1)
+    X1[5:5+len(t1), 1] = np.sin(4*np.pi*t1)
+    t2 = t**2
+    X2 = 0.3*np.random.randn(35, 2)
+    X2[0:len(t2), 0] = np.cos(2*np.pi*t2)
+    X2[0:len(t2), 1] = np.sin(4*np.pi*t2)
+    """
+
+    #Longer example
     t = np.linspace(0, 1, 150)
     t1 = t
     X1 = 0.3*np.random.randn(200, 2)
@@ -220,33 +262,39 @@ def IBSMWatGPUExample():
 
     matchfn = lambda x: np.exp(-x/(0.3**2))-0.6
     hvPenalty = -0.3
+    [ci, cj] = [60, 60]
+    row = SSMA[ci, :]
+    col = SSMB[:, cj]
+    CSM = row[None, :] - col[:, None]
+
+    res = SMWat(np.abs(CSM), matchfn, hvPenalty)
+    D1 = res['D'][1::, 1::]
 
     tic = time.time()
-    SSMAG = np.array(SSMA, dtype = np.float32)
-    SSMAG = gpuarray.to_gpu(SSMAG)
-    SSMBG = np.array(SSMB, dtype = np.float32)
-    SSMBG = gpuarray.to_gpu(SSMBG)
-    CSMG = doIBSMWatGPU(SSMAG, SSMBG)
+    CSMG = np.array(CSM, dtype = np.float32)
+    CSMG = gpuarray.to_gpu(CSMG)
+    D2 = doSMWatGPU(CSMG, hvPenalty)
+    sio.savemat("D2.mat", {"D2":D2})
     print("Elapsed Time GPU: %g"%(time.time() - tic))
 
-    #plt.subplot(132)
-    plt.imshow(CSMG, aspect = 'auto', cmap = 'afmhot', interpolation = 'none')
-    plt.title("GPU")
+    #CSM = doIBSMWat(SSMA, SSMB, matchfn, hvPenalty)
 
-    """
     tic = time.time()
-    CSM = doIBSMWat(SSMA, SSMB, matchfn, hvPenalty)
     print("Elapsed Time CPU: %g"%(time.time() - tic))
-    plt.subplot(131)
-    plt.imshow(CSM, cmap = 'afmhot', interpolation = 'none')
+    plt.subplot(221)
+    plt.imshow(D1, cmap = 'afmhot', interpolation = 'none')
     plt.title("CPU")
-    plt.subplot(133)
-    plt.imshow(CSM - CSMG, cmap = 'afmhot', interpolation = 'none')
-    plt.colorbar()
-    """
+    plt.subplot(222)
+    plt.imshow(D2, cmap = 'afmhot', interpolation = 'none')
+    plt.title("GPU")
+    plt.subplot(223)
+    plt.imshow(matchfn(np.abs(CSM)), cmap = 'afmhot', interpolation = 'none')
+    plt.subplot(224)
+    plt.plot(D1[0, :], 'r')
+    plt.plot(D2[0, :], 'b')
     plt.show()
 
 if __name__ == '__main__':
     #DTWGPUExample()
-    IBDTWGPUExample()
-    #IBSMWatGPUExample()
+    #IBDTWGPUExample()
+    IBSMWatGPUExample()

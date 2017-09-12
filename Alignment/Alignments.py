@@ -124,7 +124,7 @@ def DTWConstrained(X, Y, distfn, ci, cj):
     :returns (Dynamic Programming Matrix, Cross-Similarity matrix,
                 None, optimal path)
     """
-    print "Constraint: (%i, %i)"%(ci, cj)
+    print("Constraint: (%i, %i)"%(ci, cj))
     M = X.shape[0]
     N = Y.shape[0]
     CSM = np.zeros((M, N))
@@ -170,7 +170,7 @@ def doIBDTW(SSMA, SSMB):
     N = SSMB.shape[0]
     D = np.zeros((M, N))
     for i in range(M):
-        print "Finished row %i of %i"%(i, M)
+        print("Finished row %i of %i"%(i, M))
         for j in range(N):
             row = SSMA[i, :]
             col = SSMB[:, j]
@@ -243,7 +243,7 @@ def doIBSMWat(SSMA, SSMB, matchfn, hvPenalty = -0.3):
     N = SSMB.shape[0]
     D = np.zeros((M, N))
     for i in range(M):
-        print "Finished row %i of %i"%(i, M)
+        print("Finished row %i of %i"%(i, M))
         for j in range(N):
             row = SSMA[i, :]
             col = SSMB[:, j]
@@ -409,15 +409,15 @@ def DTWExample():
     Y[:, 1] = np.cos(4*np.pi*t2) + t2 + 0.5
 
     (D, CSM, backpointers, path) = DTW(X, Y, lambda x,y: np.sqrt(np.sum((x-y)**2)))
-    print "Unconstrained DTW: ", D[-1, -1]
+    print("Unconstrained DTW: %g"%D[-1, -1])
 
     constraint = [20, 30]
     (D, CSM, backpointers, path) = DTWConstrained(X, Y, lambda x,y: np.sqrt(np.sum((x-y)**2)), constraint[0], constraint[1])
-    print "Cost Python: ", D[-1, -1]
+    print("Cost Python: %g"%D[-1, -1])
     tic = time.time()
-    print "Cost C: ", SAC.DTWConstrained(CSM, constraint[0], constraint[1])
+    print("Cost C: %g"%SAC.DTWConstrained(CSM, constraint[0], constraint[1]))
     toc = time.time()
-    print "Elapsed Time: ", toc-tic
+    print("Elapsed Time: %g"%(toc-tic))
 
     plt.figure(figsize=(12, 12))
     plt.subplot2grid((2, 2), (0, 0), colspan=2)

@@ -35,7 +35,7 @@ if __name__ == '__main__':
     #SSMY = getZNormSSM(SSMY)
     tic = time.time()
     D = doIBDTW(SSMX, SSMY)
-    print "Elapsed Time CPU: ", time.time() - tic
+    print("Elapsed Time CPU: %g"%(time.time() - tic))
     gSSMX = gpuarray.to_gpu(np.array(SSMX, dtype = np.float32))
     gSSMY = gpuarray.to_gpu(np.array(SSMY, dtype = np.float32))
     D2 = doIBDTWGPU(gSSMX, gSSMY, True, True)
@@ -53,8 +53,8 @@ if __name__ == '__main__':
 
     (DAll, CSM, backpointers, path) = DTWCSM(D)
     resCPU = DAll[-1, -1]
-    print "GPU Result: ", resGPU
-    print "CPU Result: ", resCPU
+    print("GPU Result: %g"%resGPU)
+    print("CPU Result: %g"%resCPU)
 
     c = plt.get_cmap('Spectral')
     C1 = c(np.array(np.round(255*np.arange(M)/float(M)), dtype=np.int32))

@@ -50,7 +50,7 @@ def testCTWAlignments(eng):
     types = Ps.keys()
     plt.hold(True)
     for i in range(len(types)):
-        print types[i]
+        print(types[i])
         P = Ps[types[i]]
         plt.plot(P[:, 0], P[:, 1])
     plt.legend([t[1::] for t in types])

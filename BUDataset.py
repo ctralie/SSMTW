@@ -17,7 +17,7 @@ def wrl2Off():
             foldername = "BU_4DFE/F%.3i/%s"%(i, name)
             subprocess.call(["avconv", "-r", "30", "-i", "%s/%s3d.jpg"%(foldername, '%'), "-r", "30", "-b", "30000k", "%s/out.avi"%foldername])
             for filename in glob.glob("%s/*.wrl"%foldername):
-                print filename
+                print(filename)
                 subprocess.call(["meshlabserver", "-i", filename, "-o", filename[0:-4] + ".off", "-s", "BU_4DFE/text_to_vert.mlx"])
                 #meshlabserver -i /media/OLD_LAPTOP/data/BU_4DFE/F001/Fear/042.wrl  -o /media/OLD_LAPTOP/data/BU_4DFE/bfu_offFiles/1F_042.off -s /media/OLD_LAPTOP/data/BU_4DFE/text_to_vert.mlx
 
@@ -102,20 +102,20 @@ def loadMeshVideoFolder(foldername, NShells = 50, RMax = 2.0, NSamples = 1000000
 
     for i in range(1, N):
         try:
-            print "Loading %i of %i"%(i, N)
+            print("Loading %i of %i"%(i, N))
             tic = time.time()
             (VPos, VColors, ITris) = loadOffFileExternal("%s/%.3i.off"%(foldername, i))
             m.VPos = VPos
             m.VColors = VColors
             m.ITris = ITris
             m.needsDisplayUpdate = False
-            print "Elapsed Time Loading: ", time.time() - tic
+            print("Elapsed Time Loading: %g"%(time.time() - tic))
             tic = time.time()
             (Ps, Ns) = samplePointCloud(m, NSamples)
-            print "Elapsed Time Sampling: ", time.time() - tic
+            print("Elapsed Time Sampling: %g"%(time.time() - tic))
             tic = time.time()
             I[i, :] = getShapeShellHistogram(Ps, Ns, NShells, RMax, SPoints)
-            print "Elapsed Time histogram: ", time.time() - tic
+            print("Elapsed Time histogram: %g"%(time.time() - tic))
         except:
             continue
     return I
@@ -126,7 +126,7 @@ def precomputeEuclideanEmbeddings():
             foldername = "BU_4DFE/F%.3i/%s"%(i, emotion)
             filename = "%s/SSM.mat"%foldername
             if os.path.exists(filename):
-                print "Already done %s.  Skipping..."%filename
+                print("Already done %s.  Skipping..."%filename)
             else:
                 np.random.seed(100)
                 #Load in mesh and compute shell histogram
@@ -137,7 +137,7 @@ def precomputeEuclideanEmbeddings():
                 sio.savemat(filename, {"SSM":SSM, "I":I})
             filename = "%s/VideoPCA.mat"%foldername
             if os.path.exists(filename):
-                print "Already done %s.  Skipping..."%filename
+                print("Already done %s.  Skipping..."%filename)
             else:
                 (I, IDims) = loadVideoFolder(foldername)
                 I = getPCAVideo(I)
@@ -155,7 +155,7 @@ def runAlignmentExperiments(eng, seed, K = 10, NPerFace = 10):
     for e in range(len(emotions)):
         emotion = emotions[e]
         for i in range(1, NFaces+1):
-            print "Doing %s face %i..."%(emotion, i)
+            print("Doing %s face %i..."%(emotion, i))
             foldername = "BU_4DFE/F%.3i/%s"%(i, emotion)
             I1 = sio.loadmat("%s/SSM.mat"%foldername)['I']
             I2 = sio.loadmat("%s/VideoPCA.mat"%foldername)['I']

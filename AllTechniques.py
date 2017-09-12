@@ -23,11 +23,11 @@ def getIBDTWAlignment(X1, X2, useGPU = True, normFn = get2DRankSSM, Verbose = Fa
         D = doIBDTW(SSM1, SSM2)
         DNorm = doIBDTW(SSM1Norm, SSM2Norm)
     if Verbose:
-        print "Elapsed Time GPU: ", time.time() - tic
+        print("Elapsed Time GPU: %g"%(time.time() - tic))
     (DAll, CSM, backpointers, path) = DTWCSM(D)
     (DAllN, CSMN, backpointersN, pathN) = DTWCSM(DNorm)
     if Verbose:
-        print "Elapsed Time Total: ", time.time() - tic
+        print("Elapsed Time Total: %g"%(time.time() - tic))
 
     if doPlot:
         plt.figure(figsize=(10, 10))
@@ -75,7 +75,7 @@ def doAllAlignments(eng, X1, X2, t2, useGPU = True, drawPaths = False, drawAlign
     tic = time.time()
     Ps = getCTWAlignments(eng, X1, X2)
     timeOthers = time.time() - tic
-    print "IBDTW Time: %g, Others Time: %g"%(timeIBDTW, timeOthers)
+    print("IBDTW Time: %g, Others Time: %g"%(timeIBDTW, timeOthers))
     Ps['PIBDTW'] = PIBDTW
     Ps['PIBDTWN'] = PIBDTWN
 
@@ -98,7 +98,7 @@ def doAllAlignments(eng, X1, X2, t2, useGPU = True, drawPaths = False, drawAlign
     if drawPaths:
         plt.hold(True)
         for i in range(len(types)):
-            print types[i]
+            print(types[i])
             P = Ps[types[i]]
             plt.plot(P[:, 0], P[:, 1])
         plt.plot(PGT[:, 0], PGT[:, 1], 'k', lineWidth = 4, lineStyle = '--')
