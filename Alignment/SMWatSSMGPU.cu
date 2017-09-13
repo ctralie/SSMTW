@@ -64,7 +64,7 @@ __global__ void SMWatSSM(float* SSMA, float* SSMB, float* CSM, int M, int N, int
                 continue;
             }
             if (flip) {
-                val = SSMA[(M-ci)*M + (M-thisi)] - SSMB[(N-cj)*N + N-thisj];
+                val = SSMA[(M-ci-1)*M + (M-thisi-1)] - SSMB[(N-cj-1)*N + N-thisj-1];
             }
             else {
                 val = SSMA[ci*M + thisi] - SSMB[cj*N + thisj];

@@ -255,6 +255,7 @@ def IBSMWatGPUExample():
     X2[0:len(t2), 1] = np.sin(4*np.pi*t2)
     """
 
+    #"""
     #Longer example
     t = np.linspace(0, 1, 150)
     t1 = t
@@ -265,6 +266,7 @@ def IBSMWatGPUExample():
     X2 = 0.3*np.random.randn(180, 2)
     X2[0:len(t2), 0] = np.cos(2*np.pi*t2)
     X2[0:len(t2), 1] = np.sin(4*np.pi*t2)
+    #"""
 
     SSMA = get2DRankSSM(getSSM(X1))
     SSMB = get2DRankSSM(getSSM(X2))
@@ -288,10 +290,13 @@ def IBSMWatGPUExample():
 
     plt.subplot(131)
     plt.imshow(D1, cmap = 'afmhot', interpolation = 'none')
+    plt.title("CPU")
     plt.subplot(132)
     plt.imshow(D2, cmap = 'afmhot', interpolation = 'none')
+    plt.title("GPU")
     plt.subplot(133)
     plt.imshow(D1 - D2, cmap = 'afmhot', interpolation = 'none')
+    plt.title("Difference")
     plt.show()
 
     plt.show()
