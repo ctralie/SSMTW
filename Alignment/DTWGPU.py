@@ -84,6 +84,10 @@ def doIBDTWGPU(SSMA, SSMB, returnCSM = False, printElapsedTime = False):
     """
     M = SSMA.shape[0]
     N = SSMB.shape[0]
+    if not type(SSMA) == gpuarray:
+        SSMA = gpuarray.to_gpu(np.array(SSMA, dtype = np.float32))
+    if not type(SSMB) == gpuarray:
+        SSMB = gpuarray.to_gpu(np.array(SSMB, dtype = np.float32))
 
     CSM = np.zeros((M, N), dtype=np.float32)
     CSM = gpuarray.to_gpu(CSM)
@@ -164,6 +168,10 @@ def flrud(A):
 
 def doIBSMWatGPU(SSMA, SSMB, hvPenalty, printElapsedTime = False):
     tic = time.time()
+    if not type(SSMA) == gpuarray:
+        SSMA = gpuarray.to_gpu(np.array(SSMA, dtype = np.float32))
+    if not type(SSMB) == gpuarray:
+        SSMB = gpuarray.to_gpu(np.array(SSMB, dtype = np.float32))
     CSM = doIBSMWatGPUHelper(SSMA, SSMB, hvPenalty, False)
     CSM = CSM + flrud(doIBSMWatGPUHelper(SSMA, SSMB, hvPenalty, True))
     if printElapsedTime:
