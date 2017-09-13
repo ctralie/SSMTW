@@ -101,6 +101,5 @@ double SMWat(double* S, int M, int N, int i1, int j1, int i2, int j2,
 
 double SMWatConstrained(double* S, int M, int N, int ci, int cj, double hvPenalty) {
     double ret = SMWat(S, M, N, 0, 0, ci, cj, hvPenalty);
-    return ret;
-    //return ret + SMWat(S, M, N, M-1, N-1, ci, cj, hvPenalty);
+    return ret + SMWat(S, M, N, M-1, N-1, ci, cj, hvPenalty);
 }

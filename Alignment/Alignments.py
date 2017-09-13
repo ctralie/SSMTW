@@ -188,21 +188,27 @@ def SMWat(CSM, matchFunction, hvPenalty = -0.2, backtrace = False, backidx = [],
     :returns (Distance (scalar), (N+1)x(M+1) dynamic programming matrix,
               optimal subsequence alignment path)
     """
-    N = CSM.shape[0]+1
-    M = CSM.shape[1]+1
-    D = np.zeros((N, M))
+    M = CSM.shape[0]+1
+    N = CSM.shape[1]+1
+    D = np.zeros((M, N))
+    U = np.zeros((M, N))
+    L = np.zeros((M, N))
+    UL = np.zeros((M, N))
     if backtrace:
-        B = np.zeros((N, M), dtype = np.int64) #Backpointer indices
+        B = np.zeros((M, N), dtype = np.int64) #Backpointer indices
         pointers = [[-1, 0], [0, -1], [-1, -1], None] #Backpointer directions
     maxD = 0
     maxidx = [0, 0]
-    for i in range(1, N):
-        for j in range(1, M):
+    for i in range(1, M):
+        for j in range(1, N):
             d1 = D[i-1, j]
             d2 = D[i, j-1]
             d3 = D[i-1, j-1]
             cost = matchFunction(CSM[i-1, j-1])
             arr = [d1+cost+hvPenalty, d2+cost+hvPenalty, d3+cost, 0.0]
+            U[i, j] = d1
+            L[i, j] = d2
+            UL[i, j] = d3
             D[i, j] = np.max(arr)
             if backtrace:
                 B[i, j] = np.argmax(arr)
@@ -211,7 +217,7 @@ def SMWat(CSM, matchFunction, hvPenalty = -0.2, backtrace = False, backidx = [],
                 if backtrace:
                     maxidx = [i, j]
 
-    res = {'maxD':maxD, 'D':D}
+    res = {'maxD':maxD, 'D':D, 'U':U[1::, 1::], 'L':L[1::, 1::], 'UL':UL[1::, 1::]}
     #Backtrace starting at the largest index
     if backtrace:
         res['B'] = B

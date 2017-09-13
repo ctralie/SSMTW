@@ -1,4 +1,4 @@
-__global__ void SMWat(float* CSM, float* D, int M, int N, int diagLen, int diagLenPow2, float hvPenalty) {
+__global__ void SMWat(float* CSM, float* D, float* U, float* L, float* UL, int M, int N, int diagLen, int diagLenPow2, float hvPenalty) {
     //Have circularly rotating system of 3 buffers
     extern __shared__ float x[]; //Circular buffer
     int off = 0;
@@ -10,7 +10,6 @@ __global__ void SMWat(float* CSM, float* D, int M, int N, int diagLen, int diagL
     int thisi, thisj;
     int idx;
     float val, score;
-
 
     //Figure out K (number of batches)
     int K = diagLenPow2 >> 9;
@@ -62,42 +61,57 @@ __global__ void SMWat(float* CSM, float* D, int M, int N, int diagLen, int diagL
                 val = val*-1.0f;
             }
             val = expf(-val/0.09f)-0.6f;
-            score = 0.0f;
-            if (thisi == 0 && thisj == 0 || thisi == 1 && thisj == 1) {
-                score = val;
-            }
-            else if (thisi == 0 || thisj == 0) {
-                score = val + hvPenalty;
-            }
-            if (score < 0.0f) {
-                score = 0.0f;
-            }
+            score = 0.0;
             //Above
             if (idx + upoff + 1 < N + M - 1 && thisi > 0) {
                 if (x[((off+1)%3)*diagLen + idx + upoff + 1] > -1) {
-                    if (score < val + x[((off+1)%3)*diagLen + idx + upoff + 1] + hvPenalty) {
-                        score = val + x[((off+1)%3)*diagLen + idx + upoff + 1] + hvPenalty;
-                    }
+                    if (val + x[((off+1)%3)*diagLen + idx + upoff + 1] + hvPenalty > score)
+                    score = val + x[((off+1)%3)*diagLen + idx + upoff + 1] + hvPenalty;
                 }
+                else if (val + hvPenalty > score) {
+                    score = val + hvPenalty;
+                }
+                U[thisi*N + thisj] = x[((off+1)%3)*diagLen + idx + upoff + 1];
             }
+            else if (val + hvPenalty > score) {
+                score = val + hvPenalty;
+            }
+
+
             if (idx + upoff >= 0 && thisj > 0) {
                 //Left
                 if (x[((off+1)%3)*diagLen + idx + upoff] > -1) {
-                    if (score < x[((off+1)%3)*diagLen + idx + upoff] + val + hvPenalty) {
+                    if (x[((off+1)%3)*diagLen + idx + upoff] + val + hvPenalty > score) {
                         score = x[((off+1)%3)*diagLen + idx + upoff] + val + hvPenalty;
                     }
+                    else if (val + hvPenalty > score) {
+                        score = val + hvPenalty;
+                    }
+                    L[thisi*N + thisj] = x[((off+1)%3)*diagLen + idx + upoff];
                 }
             }
+            else if (val + hvPenalty > score) {
+                score = val + hvPenalty;
+            }
+
+
             if (i1 == M-1 && j1 > 1) {
                 upoff = 1;
             }
             if (idx + upoff >= 0 && thisi > 0) {
                 //Diagonal
                 if (x[((off+2)%3)*diagLen + idx + upoff] > -1) {
-                    if (score < x[((off+2)%3)*diagLen + idx + upoff] + val < score) {
+                    if (x[((off+2)%3)*diagLen + idx + upoff] + val > score) {
                         score = x[((off+2)%3)*diagLen + idx + upoff] + val;
                     }
                 }
+                else if (val > score) {
+                    score = val;
+                }
+                UL[thisi*N + thisj] = x[((off+2)%3)*diagLen + idx + upoff];
+            }
+            else if (val > score) {
+                score = val;
             }
             x[off*diagLen + idx] = score;
             D[thisi*N + thisj] = score;
