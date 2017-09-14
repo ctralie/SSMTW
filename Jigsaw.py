@@ -115,25 +115,43 @@ def make2JigsawPieces(P, tL, tR, t, doPlot = False):
 
 if __name__ == '__main__':
     from SyntheticCurves import applyRandomRigidTransformation
-    from Alignment.AlignmentTools import getSSM
+    from Alignment.AlignmentTools import getSSM, projectPath, getProjectedPathParam
     from Alignment.DTWGPU import initParallelAlgorithms, doIBSMWatGPU
+    from Alignment.Alignments import SMWat
     initParallelAlgorithms()
 
     Paths = loadSVGPaths()
     t1 = np.linspace(0, 1, 100)
     t2 = t1**2
     (XL, XR) = make2JigsawPieces(Paths[Paths.keys()[-1]], t1, t2, 0.3)
+    XR = applyRandomRigidTransformation(XR, special = True)
     DL = getSSM(XL)
     DR = getSSM(XR)
     M = np.max(DL)
     DL = DL/M
     DR = DR/M
     CSWM = doIBSMWatGPU(DL, DR, -0.3, True)
+    #CSWM = np.exp(-CSWM/(np.mean(CSWM)))
+    CSWM = CSWM - np.median(CSWM)
+    CSWM = CSWM/np.max(np.abs(CSWM))
 
-    plt.subplot(221)
-    plt.imshow(DL, cmap = 'afmhot', interpolation = 'nearest')
-    plt.subplot(222)
-    plt.imshow(DR, cmap = 'afmhot', interpolation = 'nearest')
-    plt.subplot(223)
+    matchfn = lambda x: x
+    hvPenalty = -0.4
+    res = SMWat(CSWM, matchfn, hvPenalty, backtrace = True)
+    P = res['path']
+    P = np.array(P) - 1
+    pidx = projectPath(P, CSWM.shape[0], CSWM.shape[1])
+    res = getProjectedPathParam(P, pidx, 'Spectral')
+
+    plt.subplot(121)
     plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
+    plt.title("Partial Cross-Similarity Warp Matrix")
+    plt.scatter(P[:, 1], P[:, 0])
+
+    plt.subplot(122)
+    plt.scatter(XL[:, 0], XL[:, 1], 20, 'k')
+    plt.scatter(XL[res['idx1']:res['idx2'], 0], XL[res['idx1']:res['idx2'], 1], 20, c = res['C1'])
+    plt.scatter(XR[:, 0], XR[:, 1], 20, c = res['C2'])
+    plt.axis('equal')
+    plt.title("Jigsaw Pieces")
     plt.show()

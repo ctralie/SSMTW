@@ -167,16 +167,38 @@ def getInterpolatedEuclideanTimeSeries(X, t):
     Y = f(dix, t)
     return Y
 
-def projectPath(path):
+def projectPath(path, M, N):
     """
-    Choose an index along the column to go with every
-    row index
+    Choose an index along the row to go with every
+    column index
     """
-    M = path[-1, 0] + 1
-    N = path[-1, 1] + 1
     involved = np.zeros((M, N))
     involved[path[:, 0], path[:, 1]] = 1
     return np.argsort(-involved, 0)[0, :]
+
+def getProjectedPathParam(path, pidx, strcmap = ''):
+    """
+    Given a projected path, return the arrays [t1, t2]
+    in [0, 1] which synchronize the first curve to the
+    second curve
+    :param path: Nx2 array representing original warping path
+    :param pidx: Indices along rows to go with every column index
+    """
+    #First figure out if this is only a sub-path
+    idx1 = np.min(path[:, 0])
+    idx2 = np.max(path[:, 0])+1
+    N = idx2 - idx1
+    t1 = np.linspace(0, 1, N)
+    t2 = (pidx - idx1)/float(N)
+    if len(strcmap) > 0:
+        c = plt.get_cmap(strcmap)
+        C1 = c(np.array(np.round(255*t1), dtype=np.int32))
+        C1 = C1[:, 0:3]
+        C2 = c(np.array(np.round(255*t2), dtype=np.int32))
+        C2 = C2[:, 0:3]
+        return {'t1':t1, 't2':t2, 'C1':C1, 'C2':C2, 'idx1':idx1, 'idx2':idx2}
+    return {'t1':t1, 't2':t2}
+
 
 def rasterizeWarpingPath(P):
     if np.sum(np.abs(P - np.round(P))) == 0:

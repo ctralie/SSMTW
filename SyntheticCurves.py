@@ -18,10 +18,12 @@ from AllTechniques import *
 #           TOPC Utility Functions                #
 ###################################################
 
-def applyRandomRigidTransformation(X):
+def applyRandomRigidTransformation(X, special = False):
     """
     Randomly rigidly rotate and translate a time-ordered point cloud
     :param X: Nxd matrix representing a time-ordered point cloud
+    :param special: Whether to restrict to the special orthogonal group
+        (no flips; determinant 1)
     :return Y: Nxd matrix representing transformed version of X
     """
     dim = X.shape[1]
@@ -30,6 +32,11 @@ def applyRandomRigidTransformation(X):
     #Make a random rotation matrix
     R = np.random.randn(dim, dim)
     R, S, V = np.linalg.svd(R)
+    if special and np.linalg.det(R) < 0:
+        idx = np.arange(R.shape[0])
+        idx[0] = 1
+        idx[1] = 0
+        R = R[idx, :]
     T = np.std(X)*np.random.randn(dim)
     return CM[None, :] + np.dot(X, R) + T[None, :]
 

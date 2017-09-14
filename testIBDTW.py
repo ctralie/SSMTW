@@ -34,12 +34,11 @@ if __name__ == '__main__':
     #SSMX = getZNormSSM(SSMX)
     #SSMY = getZNormSSM(SSMY)
     tic = time.time()
-    D = doIBDTW(SSMX, SSMY)
+    #D = doIBDTW(SSMX, SSMY)
     print("Elapsed Time CPU: %g"%(time.time() - tic))
-    gSSMX = gpuarray.to_gpu(np.array(SSMX, dtype = np.float32))
-    gSSMY = gpuarray.to_gpu(np.array(SSMY, dtype = np.float32))
-    D2 = doIBDTWGPU(gSSMX, gSSMY, True, True)
-    resGPU = doIBDTWGPU(gSSMX, gSSMY, False, True)
+    D2 = doIBDTWGPU(SSMX, SSMY, True, True)
+    D = D2
+    resGPU = doIBDTWGPU(SSMX, SSMY, False, True)
 
     sio.savemat("D.mat", {"D":D, "D2":D2})
 
@@ -56,12 +55,10 @@ if __name__ == '__main__':
     print("GPU Result: %g"%resGPU)
     print("CPU Result: %g"%resCPU)
 
-    c = plt.get_cmap('Spectral')
-    C1 = c(np.array(np.round(255*np.arange(M)/float(M)), dtype=np.int32))
-    C1 = C1[:, 0:3]
-    idx = projectPath(path)
-    C2 = c(np.array(np.round(255*idx/float(M)), dtype=np.int32))
-    C2 = C2[:, 0:3]
+
+    #Project path
+    pidx = projectPath(path, M, N)
+    res = getProjectedPathParam(path, pidx, 'Spectral')
 
     sio.savemat("IBDTW.mat", {"X":X, "Y":Y, "SSMX":SSMX, "SSMY":SSMY, "D":D})
 
@@ -86,9 +83,9 @@ if __name__ == '__main__':
     plt.title("Cross-Similarity Warp Matrix")
 
     plt.subplot(224)
-    plt.scatter(X[:, 0], X[:, 1], 3, c=C1, edgecolor='none')
+    plt.scatter(X[:, 0], X[:, 1], 3, c=res['C1'], edgecolor='none')
     plt.hold(True)
-    plt.scatter(Y[:, 0], Y[:, 1], 3, c=C2, edgecolor='none')
+    plt.scatter(Y[:, 0], Y[:, 1], 3, c=res['C2'], edgecolor='none')
     plt.axis('equal')
     plotbgcolor = (0.15, 0.15, 0.15)
     ax = plt.gca()
