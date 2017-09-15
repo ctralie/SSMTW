@@ -17,8 +17,8 @@ def getIBDTWAlignment(X1, X2, useGPU = True, normFn = get2DRankSSM, Verbose = Fa
     SSM2Norm = np.array(normFn(SSM2), dtype = np.float32)
     if useGPU:
         import pycuda.gpuarray as gpuarray
-        D = doIBDTWGPU(gpuarray.to_gpu(SSM1), gpuarray.to_gpu(SSM2), returnCSM = True)
-        DNorm = doIBDTWGPU(gpuarray.to_gpu(SSM1Norm), gpuarray.to_gpu(SSM2Norm), returnCSM = True)
+        D = doIBDTWGPU(SSM1, SSM2, returnCSM = True)
+        DNorm = doIBDTWGPU(SSM1Norm, SSM2Norm, returnCSM = True)
     else:
         D = doIBDTW(SSM1, SSM2)
         DNorm = doIBDTW(SSM1Norm, SSM2Norm)
@@ -93,8 +93,8 @@ def doAllAlignments(eng, X1, X2, t2, useGPU = True, drawPaths = False, drawAlign
         if drawAlignmentScores:
             plt.show()
         errors[ptype] = err
-    
-    types = ['PGTW', 'PIBDTWN']
+
+    types = ['PGTW', 'PIBDTW', 'PIBDTWN', 'PCTW', 'PDTW', 'PIMW']
     if drawPaths:
         plt.hold(True)
         for i in range(len(types)):
@@ -102,6 +102,8 @@ def doAllAlignments(eng, X1, X2, t2, useGPU = True, drawPaths = False, drawAlign
             P = Ps[types[i]]
             plt.plot(P[:, 0], P[:, 1])
         plt.plot(PGT[:, 0], PGT[:, 1], 'k', lineWidth = 4, lineStyle = '--')
-        plt.legend(["%s %.3g"%(t[1::], errors[t]) for t in types] + ["GT"])
+        plt.legend(["%s %.3g"%(t[1::], errors[t]) for t in types] + ["GT"], bbox_to_anchor=(0, 1), loc=2)
+        plt.xlim([0, np.max(PGT[:, 0])])
+        plt.ylim([0, np.max(PGT[:, 1])])
 
     return (errors, Ps)

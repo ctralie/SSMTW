@@ -14,6 +14,7 @@ function [] = extractAlignments()
     Y1 = cmdscale(pdist2(X1, X1));
     Y2 = cmdscale(pdist2(X2, X2));
     if ~(size(Y1, 2) == size(Y2, 2))
+        disp('Resizing dimensions for DTW');
         dim = max(size(Y1, 2), size(Y2, 2));
         temp = zeros(size(Y1, 1), dim);
         temp(:, 1:size(Y1, 2)) = Y1;
@@ -22,12 +23,16 @@ function [] = extractAlignments()
         temp(:, 1:size(Y2, 2)) = Y2;
         Y2 = temp;
     end
+    disp('Dimensions');
+    size(Y1)
+    size(Y2)
     
-    %% Setup time series
+    %% Setup time series  
+
     Xs = cell(1, 2);
     Xs{1} = X1';
     Xs{2} = X2';
-    
+  
     Ys = cell(1, 2);
     Ys{1} = Y1';
     Ys{2} = Y2';
@@ -45,11 +50,11 @@ function [] = extractAlignments()
     parGtw = st('nItMa', 20);
 
     %% monotonic basis
-    ns = cellDim(Xs, 2);
+    ns = cellDim(Ys, 2);
     bas = baTems(l, ns, 'stp', [], 'pol', [5, 0.5], 'tan', [5 1 1], 'log', [5], 'exp', 5);
 
     %% utw (initialization, uniform time warping)
-    aliUtw = utw(Xs, bas, aliT);
+    aliUtw = utw(Ys, bas, aliT);
 
     %% dtw
     aliDtw = dtw(Ys, aliT, parDtw);
@@ -64,11 +69,11 @@ function [] = extractAlignments()
     PIMW = aliImw.P;
 
     %% ctw
-    aliCtw = ctw(Xs, aliUtw, aliT, parCtw, parCca, parDtw);
+    aliCtw = ctw(Ys, aliUtw, aliT, parCtw, parCca, parDtw);
     PCTW = aliCtw.P;
 
     %% gtw
-    aliGtw = gtw(Xs, bas, aliUtw, aliT, parGtw, parCca, parGN);
+    aliGtw = gtw(Ys, bas, aliUtw, aliT, parGtw, parCca, parGN);
     PGTW = aliGtw.P;
 
     save('matlabResults.mat', 'PDTW', 'PDDTW', 'PIMW', 'PCTW', 'PGTW');

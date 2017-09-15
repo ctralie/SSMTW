@@ -37,7 +37,7 @@ def applyRandomRigidTransformation(X, special = False):
         idx[0] = 1
         idx[1] = 0
         R = R[idx, :]
-    T = np.std(X)*np.random.randn(dim)
+    T = 5*np.std(X)*np.random.randn(dim)
     return CM[None, :] + np.dot(X, R) + T[None, :]
 
 def getMeanDistNeighbs(X, Kappa):
@@ -229,7 +229,7 @@ def getConeHelix(c, NPeriods, pt):
     X[:, 2] = zt
     return X
 
-def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps):
+def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps, doPlots = False):
     """
     :param N: Number of points per synthetic curve
     :param NPerClass: Number of warped sampled curves per class
@@ -237,6 +237,8 @@ def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps):
     :param Kappa: Fraction of nearest neighbors to use when making bump
     :param NRelMag: Controls how large the bumps are
     :param NBumps: Number of bumps to add
+    :param doPlots: Whether to plot all of the alignments paths from different
+        algorithms for each trial
     """
     initParallelAlgorithms()
     eng = initMatlabEngine()
@@ -258,6 +260,8 @@ def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps):
     t1 = np.linspace(0, 1, N)
     maxdistances = []
     AllErrors = {}
+    if doPlots:
+        plt.figure(figsize = (12, 6))
     for name in Curves:
         AllErrors = {}
         curve = Curves[name]
@@ -274,7 +278,16 @@ def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps):
             #Apply a random rigid transformation
             x = applyRandomRigidTransformation(x)
             X2 = x
-            (errors, Ps) = doAllAlignments(eng, X1, X2, t2)
+            if doPlots:
+                plt.clf()
+                plt.subplot(121)
+                plt.scatter(X1[:, 0], X1[:, 1], 20, np.arange(X1.shape[0]), cmap = 'Spectral')
+                plt.scatter(X2[:, 0], X2[:, 1], 20, np.arange(X2.shape[0]), cmap = 'Spectral')
+                plt.axis('equal')
+                plt.subplot(122)
+            (errors, Ps) = doAllAlignments(eng, X1, X2, t2, drawPaths = doPlots)
+            if doPlots:
+                plt.savefig("%s_%i.svg"%(name, k))
             types = errors.keys()
             for t in types:
                 if not t in AllErrors:
