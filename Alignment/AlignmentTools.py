@@ -167,14 +167,45 @@ def getInterpolatedEuclideanTimeSeries(X, t):
     Y = f(dix, t)
     return Y
 
-def projectPath(path, M, N):
+def projectPath(path, M, N, direction = 0):
     """
-    Choose an index along the row to go with every
-    column index
+    Project the path onto one of the axes of the CSWM so that the
+    correspondence is a bijection
+    :param path: An NEntries x 2 array of coordinates in a warping path
+    :param M: Number of rows in the CSM
+    :param N: Number of columns in the CSM
+    :param direction.
+        0 - Choose an index along the rows to go with every
+            column index
+        1 - Choose an index along the columns to go with every
+            row index
+    :returns retpath: An NProjectedx2 array representing the projected path
     """
     involved = np.zeros((M, N))
     involved[path[:, 0], path[:, 1]] = 1
-    return np.argsort(-involved, 0)[0, :]
+    retpath = np.array([[0, 0]], dtype =  np.int64)
+    if direction == 0:
+        retpath = np.zeros((N, 2), dtype = np.int64)
+        retpath[:, 1] = np.arange(N)
+        #Choose an index along the rows to go with every column index
+        retpath[:, 0] = np.argsort(-involved, 0)[0, :]
+        #Prune to the column indices that are actually used
+        #(for partial matches)
+        colmin = np.min(path[:, 1])
+        colmax = np.max(path[:, 1])
+        retpath = retpath[colmin:colmax+1, :]
+        retpath = retpath[retpath[:, 0] < M, :]
+    elif direction == 1:
+        retpath = np.zeros((M, 2), dtype = np.int64)
+        retpath[:, 0] = np.arange(M)
+        #Choose an index along the columns to go with every row index
+        retpath[:, 1] = np.argsort(-involved, 1)[:, 0]
+        #Prune to the row indices that are actually used
+        rowmin = np.min(path[:, 0])
+        rowmax = np.max(path[:, 1])
+        retpath = retpath[rowmin:rowmax+1, :]
+        retpath = retpath[retpath[:, 1] < N, :]
+    return retpath
 
 def getProjectedPathParam(path, pidx, strcmap = ''):
     """

@@ -240,7 +240,7 @@ def SMWat(CSM, matchFunction, hvPenalty = -0.2, backtrace = False, backidx = [],
                 plt.scatter(P[-1, 1], P[-1, 0], 20, 'r', edgecolor = 'none')
                 plt.axis('off')
                 plt.savefig("BackTrace%i.png"%P.shape[0], bbox_inches = 'tight')
-        res['path'] = path
+        res['path'] = np.array(path)-1
 
     return res
 
