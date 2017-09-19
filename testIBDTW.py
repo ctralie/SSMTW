@@ -8,8 +8,8 @@ from Alignment.DTWGPU import *
 if __name__ == '__main__':
     initParallelAlgorithms()
     np.random.seed(10)
-    M = 200
-    N = 200
+    M = 150
+    N = 300
     t1 = np.linspace(0, 1, M)
     t2 = np.linspace(0, 1, N)
     t2 = t2**2
@@ -34,10 +34,9 @@ if __name__ == '__main__':
     #SSMX = getZNormSSM(SSMX)
     #SSMY = getZNormSSM(SSMY)
     tic = time.time()
-    #D = doIBDTW(SSMX, SSMY)
+    D = doIBDTW(SSMX, SSMY)
     print("Elapsed Time CPU: %g"%(time.time() - tic))
     D2 = doIBDTWGPU(SSMX, SSMY, True, True)
-    D = D2
     resGPU = doIBDTWGPU(SSMX, SSMY, False, True)
 
     sio.savemat("D.mat", {"D":D, "D2":D2})
@@ -57,23 +56,23 @@ if __name__ == '__main__':
 
 
     #Project path
-    pidx = projectPath(path, M, N)
-    res = getProjectedPathParam(path, pidx, 'Spectral')
+    pathProj = projectPath(path, M, N)
+    res = getProjectedPathParam(path, pathProj[:, 0], 'Spectral')
 
     sio.savemat("IBDTW.mat", {"X":X, "Y":Y, "SSMX":SSMX, "SSMY":SSMY, "D":D})
 
     plt.figure(figsize=(10, 10))
     plt.subplot(221)
-    plt.imshow(SSMX, cmap = 'afmhot', interpolation = 'nearest')
+    plt.imshow(SSMX, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
     plt.axis('off')
     plt.title('SSM 1')
     plt.subplot(222)
-    plt.imshow(SSMY, cmap = 'afmhot', interpolation = 'nearest')
+    plt.imshow(SSMY, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
     plt.axis('off')
     plt.title('SSM 2')
 
     plt.subplot(223)
-    plt.imshow(D, cmap = 'afmhot', interpolation = 'nearest')
+    plt.imshow(D, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
     plt.hold(True)
     plt.scatter(path[:, 1], path[:, 0], 5, 'c', edgecolor = 'none')
     plt.xlim([0, CSM.shape[1]])

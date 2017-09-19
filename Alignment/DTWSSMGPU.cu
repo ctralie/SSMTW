@@ -99,7 +99,7 @@ __global__ void DTWSSM(float* SSMA, float* SSMB, float* CSM, int M, int N, int d
             }
             x[off*diagLen + idx] = score;
             if (i == N + M - 2) {
-                CSM[ci*M + cj] = score;
+                CSM[ci*N + cj] = score;
             }
         }
         off = (off + 2) % 3; //Cycle buffers

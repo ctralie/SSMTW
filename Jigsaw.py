@@ -122,7 +122,8 @@ if __name__ == '__main__':
 
     Paths = loadSVGPaths()
     t1 = np.linspace(0, 1, 100)
-    t2 = t1**2
+    t2 = np.linspace(0, 1, 300)
+    t2 = t2**2
     (XL, XR) = make2JigsawPieces(Paths[Paths.keys()[-1]], t1, t2, 0.3)
     XR = applyRandomRigidTransformation(XR, special = True)
     DL = getSSM(XL)
@@ -140,8 +141,8 @@ if __name__ == '__main__':
     res = SMWat(CSWM, matchfn, hvPenalty, backtrace = True)
     P = res['path']
     P = np.array(P) - 1
-    pidx = projectPath(P, CSWM.shape[0], CSWM.shape[1])
-    res = getProjectedPathParam(P, pidx, 'Spectral')
+    pathProj = projectPath(P, CSWM.shape[0], CSWM.shape[1])
+    res = getProjectedPathParam(P, pathProj[:, 1], 'Spectral')
 
     plt.subplot(121)
     plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')

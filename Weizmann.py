@@ -64,7 +64,6 @@ def getEDT(I, IDims, doBorderDistance = False, doPlot = False):
         X[i, :] = F2.flatten()
     return X
 
-
 def alignWalkingVideos(eng):
     IsMask = []
     Is = []
@@ -143,7 +142,8 @@ def partialAlignWalkingVideos(crossModal = True):
             D = get2DRankSSM(D)
             SSMs.append(D)
         else:
-            D = getSSM(getEDT(I, IDims))
+            I = getEDT(I, IDims)
+            D = getSSM(I)
             D = get2DRankSSM(D)
             SSMs.append(D)
         (I, IDims) = loadImageIOVideo("%s/walk/%s.avi"%(WEIPATH, video))
