@@ -120,12 +120,14 @@ if __name__ == '__main__':
     from Alignment.Alignments import SMWat
     initParallelAlgorithms()
 
+    np.random.seed(22)
     Paths = loadSVGPaths()
     t1 = np.linspace(0, 1, 100)
-    t2 = np.linspace(0, 1, 300)
+    t2 = np.linspace(0, 1, 220)
     t2 = t2**2
-    (XL, XR) = make2JigsawPieces(Paths[Paths.keys()[-1]], t1, t2, 0.3)
+    (XL, XR) = make2JigsawPieces(Paths[Paths.keys()[-1]], t1, t2, 0.4)
     XR = applyRandomRigidTransformation(XR, special = True)
+    XR += np.array([-900, 800])
     DL = getSSM(XL)
     DR = getSSM(XR)
     M = np.max(DL)
@@ -135,24 +137,89 @@ if __name__ == '__main__':
     #CSWM = np.exp(-CSWM/(np.mean(CSWM)))
     CSWM = CSWM - np.median(CSWM)
     CSWM = CSWM/np.max(np.abs(CSWM))
+    plt.imshow(CSWM, interpolation = 'none')
+    plt.show()
 
     matchfn = lambda x: x
     hvPenalty = -0.4
+    M = CSWM.shape[0]
+    N = CSWM.shape[1]
+    print("M = %i, N = %i"%(M, N))
+
+    #Insert piece
     res = SMWat(CSWM, matchfn, hvPenalty, backtrace = True)
     P = res['path']
-    P = np.array(P) - 1
-    pathProj = projectPath(P, CSWM.shape[0], CSWM.shape[1])
-    res = getProjectedPathParam(P, pathProj[:, 1], 'Spectral')
+    P = np.array(P)
+    path = projectPath(P, M, N)
+    res = getProjectedPathParam(path)
 
-    plt.subplot(121)
-    plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
-    plt.title("Partial Cross-Similarity Warp Matrix")
-    plt.scatter(P[:, 1], P[:, 0])
+    res2 = SMWat(CSWM, matchfn, hvPenalty, backtrace = True, backidx = [75, 285])
+    P2 = res2['path']
+    P2 = np.array(P2)
+    path2 = projectPath(P2, M, N)
+    res2 = getProjectedPathParam(path2)
 
-    plt.subplot(122)
-    plt.scatter(XL[:, 0], XL[:, 1], 20, 'k')
-    plt.scatter(XL[res['idx1']:res['idx2'], 0], XL[res['idx1']:res['idx2'], 1], 20, c = res['C1'])
-    plt.scatter(XR[:, 0], XR[:, 1], 20, c = res['C2'])
+    plt.figure(figsize=(15, 15))
+    plt.subplot(321)
+    plt.scatter(XL[:, 0], XL[:, 1], 20, np.arange(M), cmap = 'Reds', edgecolor = 'none')
+    plt.scatter(XR[:, 0], XR[:, 1], 20, np.arange(N), cmap = 'Blues', edgecolor = 'none')
     plt.axis('equal')
     plt.title("Jigsaw Pieces")
-    plt.show()
+    ax = plt.gca()
+    ax.set_axis_bgcolor((0.7, 0.7, 0.7))
+    plt.axis('off')
+
+    plt.subplot(322)
+    plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
+    plt.scatter(np.arange(N), -4*np.ones(N), 80, 'k')
+    plt.scatter(np.arange(N), -4*np.ones(N), 40, np.arange(N), edgecolor = 'none', cmap = 'Blues')
+    plt.scatter(-4*np.ones(M), np.arange(M), 100, 'k')
+    plt.scatter(-4*np.ones(M), np.arange(M), 80, np.arange(M), edgecolor = 'none', cmap = 'Reds')
+    plt.xlim([-7, N])
+    plt.ylim([M, -7])
+    plt.title("PCSWM")
+
+
+
+    plt.subplot(323)
+    plt.scatter(XL[:, 0], XL[:, 1], 20, 'k')
+    plt.scatter(XL[path[0, 0]:path[-1, 0]+1, 0], XL[path[0, 0]:path[-1, 0]+1, 1], 20, c = res['C1'], edgecolor = 'none')
+    plt.scatter(XR[:, 0], XR[:, 1], 20, 'k')
+    plt.scatter(XR[path[0, 1]:path[-1, 1]+1, 0], XR[path[0, 1]:path[-1, 1]+1, 1], 20, c = res['C2'], edgecolor = 'none')
+    plt.axis('equal')
+    plt.title("Jigsaw Pieces Match 1")
+    plt.axis('off')
+    ax = plt.gca()
+    ax.set_axis_bgcolor((0.7, 0.7, 0.7))
+
+    plt.subplot(324)
+    plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
+    plt.xlim([-2, N])
+    plt.ylim([CSWM.shape[0], -2])
+    plt.title("PCSWM Backtrace 1")
+    plt.scatter(P[:, 1], P[:, 0], 30, 'k')
+    plt.scatter(path[:, 1], path[:, 0], 20, c = res['C2'], edgecolor = 'none')
+
+
+
+
+    plt.subplot(325)
+    plt.scatter(XL[:, 0], XL[:, 1], 20, 'k')
+    plt.scatter(XL[path2[0, 0]:path2[-1, 0]+1, 0], XL[path2[0, 0]:path2[-1, 0]+1, 1], 20, c = res2['C1'], edgecolor = 'none')
+    plt.scatter(XR[:, 0], XR[:, 1], 20, 'k')
+    plt.scatter(XR[path2[0, 1]:path2[-1, 1]+1, 0], XR[path2[0, 1]:path2[-1, 1]+1, 1], 20, c = res2['C2'], edgecolor = 'none')
+    plt.axis('equal')
+    plt.title("Jigsaw Pieces Match 2")
+    plt.axis('off')
+    ax = plt.gca()
+    ax.set_axis_bgcolor((0.7, 0.7, 0.7))
+
+    plt.subplot(326)
+    plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
+    plt.xlim([-2, N])
+    plt.ylim([CSWM.shape[0], -2])
+    plt.title("PCSWM Backtrace 2")
+    plt.scatter(P2[:, 1], P2[:, 0], 30, 'k')
+    plt.scatter(path2[:, 1], path2[:, 0], 20, c = res2['C2'], edgecolor = 'none')
+
+    plt.savefig("Jigsaw.svg", bbox_inches = 'tight')

@@ -193,8 +193,7 @@ def projectPath(path, M, N, direction = 0):
         #(for partial matches)
         colmin = np.min(path[:, 1])
         colmax = np.max(path[:, 1])
-        retpath = retpath[colmin:colmax+1, :]
-        retpath = retpath[retpath[:, 0] < M, :]
+        retpath = retpath[(retpath[:,1]>=colmin)*(retpath[:,1]<=colmax), :]
     elif direction == 1:
         retpath = np.zeros((M, 2), dtype = np.int64)
         retpath[:, 0] = np.arange(M)
@@ -203,32 +202,40 @@ def projectPath(path, M, N, direction = 0):
         #Prune to the row indices that are actually used
         rowmin = np.min(path[:, 0])
         rowmax = np.max(path[:, 1])
-        retpath = retpath[rowmin:rowmax+1, :]
-        retpath = retpath[retpath[:, 1] < N, :]
+        retpath = retpath[(retpath[:,0]>=rowmin)*(retpath[:,0]<=rowmax), :]
     return retpath
 
-def getProjectedPathParam(path, pidx, strcmap = ''):
+def getProjectedPathParam(path, direction = 0, strcmap = 'Spectral'):
     """
     Given a projected path, return the arrays [t1, t2]
     in [0, 1] which synchronize the first curve to the
     second curve
-    :param path: Nx2 array representing original warping path
-    :param pidx: Indices along rows to go with every column index
+    :param path: Nx2 array representing projected warping path
+    :param direction.
+        0 - There is an index along the rows to go with every
+            column index
+        1 - There is an index along the columns to go with every
+            row index
     """
-    #First figure out if this is only a sub-path
-    idx1 = np.min(path[:, 0])
-    idx2 = np.max(path[:, 0])+1
-    N = idx2 - idx1
-    t1 = np.linspace(0, 1, N)
-    t2 = (pidx - idx1)/float(N)
-    if len(strcmap) > 0:
-        c = plt.get_cmap(strcmap)
-        C1 = c(np.array(np.round(255*t1), dtype=np.int32))
-        C1 = C1[:, 0:3]
-        C2 = c(np.array(np.round(255*t2), dtype=np.int32))
-        C2 = C2[:, 0:3]
-        return {'t1':t1, 't2':t2, 'C1':C1, 'C2':C2, 'idx1':idx1, 'idx2':idx2}
-    return {'t1':t1, 't2':t2}
+    #Figure out bounds of path
+    M = path[-1, 0] - path[0, 0] + 1
+    N = path[-1, 1] - path[0, 1] + 1
+    if direction == 0:
+        t1 = np.linspace(0, 1, M)
+        t2 = (path[:, 0] - path[0, 0])/float(M)
+    elif direction == 1:
+        t2 = np.linspace(0, 1, N)
+        t1 = float(path[:, 1] - path[0, 1])/float(N)
+    else:
+        print("Unknown direction for parameterizing projected paths")
+        return None
+
+    c = plt.get_cmap(strcmap)
+    C1 = c(np.array(np.round(255*t1), dtype=np.int32))
+    C1 = C1[:, 0:3]
+    C2 = c(np.array(np.round(255*t2), dtype=np.int32))
+    C2 = C2[:, 0:3]
+    return {'t1':t1, 't2':t2, 'C1':C1, 'C2':C2}
 
 
 def rasterizeWarpingPath(P):

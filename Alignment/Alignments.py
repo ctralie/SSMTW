@@ -185,6 +185,8 @@ def SMWat(CSM, matchFunction, hvPenalty = -0.2, backtrace = False, backidx = [],
     :param CSM: A binary N x M cross-similarity matrix
     :param matchFunction: A function that scores matching/mismatching
     :param hvPenalty: The amount by which to penalize horizontal/vertical moves
+    :param backtrace: Whether to backtrace the optimal matching sequence
+    :param backidx: If backtracing, where to start (by default the maximum point)
     :returns (Distance (scalar), (N+1)x(M+1) dynamic programming matrix,
               optimal subsequence alignment path)
     """
