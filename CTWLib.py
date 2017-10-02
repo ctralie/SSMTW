@@ -17,7 +17,7 @@ def getCTWAlignments(eng, X1, X2):
     sio.savemat("ctw/Xs.mat", {"X1":X1, "X2":X2})
     eng.extractAlignments(nargout=0)
     res = sio.loadmat("ctw/matlabResults.mat")
-    #os.remove("ctw/Xs.mat")
+    os.remove("ctw/Xs.mat")
     os.remove("ctw/matlabResults.mat")
     toRemove = []
     for k in res.keys():

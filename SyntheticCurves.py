@@ -246,14 +246,14 @@ def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps, doPlots = False):
 
     WarpDict = getWarpDictionary(N)
     Curves = {}
-    #Curves['VivianiFigure8'] = lambda t: getVivianiFigure8(0.5, t)
-    #Curves['TSCubic'] = lambda t: getTschirnhausenCubic(1, t)
-    #Curves['TorusKnot23'] = lambda t: getTorusKnot(2, 3, t)
-    #Curves['TorusKnot35'] = lambda t: getTorusKnot(3, 5, t)
+    Curves['VivianiFigure8'] = lambda t: getVivianiFigure8(0.5, t)
+    Curves['TSCubic'] = lambda t: getTschirnhausenCubic(1, t)
+    Curves['TorusKnot23'] = lambda t: getTorusKnot(2, 3, t)
+    Curves['TorusKnot35'] = lambda t: getTorusKnot(3, 5, t)
     Curves['PinchedCircle'] = lambda t: getPinchedCircle(t)
     Curves['Lissajous32'] = lambda t: getLissajousCurve(1, 1, 3, 2, 0, t)
     Curves['Lissajous54'] = lambda t: getLissajousCurve(1, 1, 5, 4, 0, t)
-    #Curves['ConeHelix'] = lambda t: getConeHelix(1, 16, t)
+    Curves['ConeHelix'] = lambda t: getConeHelix(1, 16, t)
     Curves['Epicycloid1_3'] = lambda t: getEpicycloid(1.5, 0.5, t)
     #Curves['Epicycloid1_4'] = lambda t: getEpicycloid(2, 0.5, t)
 
@@ -325,4 +325,4 @@ if __name__ == '__main__':
     Kappa = 0.1
     NRelMag = 2
     NBumps = 2
-    AllErrors = doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps, doPlots = False)
+    AllErrors = doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps, doPlots = True)

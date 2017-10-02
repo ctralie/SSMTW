@@ -4,40 +4,22 @@
 %   modify  -  Chris Tralie (chris.tralie@gmail.com), 06-16-2017
 
 function [] = extractAlignments()
-    addpath(genpath('ctw'));
-    addpath(genpath('.'));
+    addPath();
     load('Xs.mat');
 
     addPath;
     prSet(1);
-    
-    Y1 = cmdscale(pdist2(X1, X1));
-    Y2 = cmdscale(pdist2(X2, X2));
-    if ~(size(Y1, 2) == size(Y2, 2))
-        disp('Resizing dimensions for DTW');
-        dim = max(size(Y1, 2), size(Y2, 2));
-        temp = zeros(size(Y1, 1), dim);
-        temp(:, 1:size(Y1, 2)) = Y1;
-        Y1 = temp;
-        temp = zeros(size(Y2, 1), dim);
-        temp(:, 1:size(Y2, 2)) = Y2;
-        Y2 = temp;
-    end
-    disp('Dimensions');
-    size(Y1)
-    size(Y2)
-    
     %% Setup time series  
 
-    Xs = cell(1, 2);
-    Xs{1} = X1';
-    Xs{2} = X2';
-  
-    Ys = cell(1, 2);
-    Ys{1} = Y1';
-    Ys{2} = Y2';
-    Y1Mean = bsxfun(@minus, Y1, mean(Y1, 1));
-    IMWReg = 30*mean(sqrt(sum(Y1Mean.^2, 2)))
+    X0s = cell(1, 2);
+    X0s{1} = X1';
+    X0s{2} = X2';
+
+    Xs = pcas(X0s, st('d', 0.999));
+    fprintf(1, 'Dimension = %i\n', size(Xs{1}, 1));
+    X1Mean = bsxfun(@minus, Xs{1}', mean(Xs{1}', 1));
+    IMWReg = 30*mean(sqrt(sum(X1Mean.^2, 2)));
+    fprintf(1, 'IMWReg = %g\n', IMWReg);
 
     %% src parameter
     l = 300; % #frame of the latent sequence (Z)
@@ -46,37 +28,46 @@ function [] = extractAlignments()
     %% algorithm parameters
     parDtw = [];
     parImw = st('lA', IMWReg, 'lB', IMWReg); % IMW: regularization weight
-    parCca = st('d', .95); % CCA: reduce dimension to keep at least 0.95 energy
-    parCtw = [];
+    parCca = st('d', 3, 'lams', .1); % CCA: reduce dimension to keep at least 0.95 energy
+    parCtw = st('nItMa', 100);
     parGN = st('nItMa', 2, 'inp', 'linear'); % Gauss-Newton: 2 iterations to update the weight in GTW, 
     parGtw = st('nItMa', 20);
 
     %% monotonic basis
-    ns = cellDim(Ys, 2);
+    ns = cellDim(Xs, 2);
     bas = baTems(l, ns, 'stp', [], 'pol', [5, 0.5], 'tan', [5 1 1], 'log', [5], 'exp', 5);
 
     %% utw (initialization, uniform time warping)
-    aliUtw = utw(Ys, bas, aliT);
+    aliUtw = utw(Xs, bas, aliT);
 
     %% dtw
-    aliDtw = dtw(Ys, aliT, parDtw);
+    aliDtw = dtw(Xs, aliT, parDtw);
     PDTW = aliDtw.P;
 
+    %% truth (approximated by DTW on aligning sequences with the same feature)
+    aliT = pdtw(Xs, aliUtw, [], parDtw); 
+    aliT.alg = 'truth';
+
     %% ddtw
-    aliDdtw = ddtw(Ys, aliT, parDtw);
+    aliDdtw = ddtw(Xs, aliT, parDtw);
     PDDTW = aliDdtw.P;
 
     %% imw
-    aliImw = pimw(Ys, aliUtw, aliT, parImw, parDtw);
+    aliImw = pimw(Xs, aliUtw, aliT, parImw, parDtw);
     PIMW = aliImw.P;
 
     %% ctw
-    aliCtw = ctw(Ys, aliUtw, aliT, parCtw, parCca, parDtw);
+    aliCtw = ctw(Xs, aliUtw, aliT, parCtw, parCca, parDtw);
     PCTW = aliCtw.P;
 
     %% gtw
-    aliGtw = gtw(Ys, bas, aliUtw, aliT, parGtw, parCca, parGN);
-    PGTW = aliGtw.P;
+    PGTW = aliUtw.P;
+    try
+        aliGtw = gtw(Xs, bas, aliUtw, aliT, parGtw, parCca, parGN);
+        PGTW = aliGtw.P;
+    catch ME
+        disp('Error running GTW');
+    end
 
     save('matlabResults.mat', 'PDTW', 'PDDTW', 'PIMW', 'PCTW', 'PGTW');
 end

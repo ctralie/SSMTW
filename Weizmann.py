@@ -241,7 +241,7 @@ def runAlignmentExperiments(eng, K = 10, NPerVideo = 50):
         sio.savemat("WeizmannErrors%i.mat"%NPerVideo, AllErrors)
 
 if __name__ == '__main__':
-    #eng = initMatlabEngine()
+    eng = initMatlabEngine()
     initParallelAlgorithms()
     #alignWalkingVideos(eng)
     runAlignmentExperiments(eng, NPerVideo = 50)
