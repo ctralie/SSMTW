@@ -36,6 +36,8 @@ function [] = extractAlignments()
     Ys = cell(1, 2);
     Ys{1} = Y1';
     Ys{2} = Y2';
+    Y1Mean = bsxfun(@minus, Y1, mean(Y1, 1));
+    IMWReg = 30*mean(sqrt(sum(Y1Mean.^2, 2)))
 
     %% src parameter
     l = 300; % #frame of the latent sequence (Z)
@@ -43,7 +45,7 @@ function [] = extractAlignments()
 
     %% algorithm parameters
     parDtw = [];
-    parImw = st('lA', 1, 'lB', 1); % IMW: regularization weight
+    parImw = st('lA', IMWReg, 'lB', IMWReg); % IMW: regularization weight
     parCca = st('d', .95); % CCA: reduce dimension to keep at least 0.95 energy
     parCtw = [];
     parGN = st('nItMa', 2, 'inp', 'linear'); % Gauss-Newton: 2 iterations to update the weight in GTW, 

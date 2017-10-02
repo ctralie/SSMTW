@@ -244,8 +244,8 @@ if __name__ == '__main__':
     #eng = initMatlabEngine()
     initParallelAlgorithms()
     #alignWalkingVideos(eng)
-    #runAlignmentExperiments(eng, NPerVideo = 50)
-    partialAlignWalkingVideos(crossModal = True)
+    runAlignmentExperiments(eng, NPerVideo = 50)
+    #partialAlignWalkingVideos(crossModal = True)
 
 if __name__ == '__main__2':
     X = sio.loadmat(WEIPATH + "/mask.mat")

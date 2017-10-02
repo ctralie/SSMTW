@@ -246,17 +246,18 @@ def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps, doPlots = False):
 
     WarpDict = getWarpDictionary(N)
     Curves = {}
-    Curves['VivianiFigure8'] = lambda t: getVivianiFigure8(0.5, t)
-    Curves['TSCubic'] = lambda t: getTschirnhausenCubic(1, t)
-    Curves['TorusKnot23'] = lambda t: getTorusKnot(2, 3, t)
-    Curves['TorusKnot35'] = lambda t: getTorusKnot(3, 5, t)
+    #Curves['VivianiFigure8'] = lambda t: getVivianiFigure8(0.5, t)
+    #Curves['TSCubic'] = lambda t: getTschirnhausenCubic(1, t)
+    #Curves['TorusKnot23'] = lambda t: getTorusKnot(2, 3, t)
+    #Curves['TorusKnot35'] = lambda t: getTorusKnot(3, 5, t)
     Curves['PinchedCircle'] = lambda t: getPinchedCircle(t)
     Curves['Lissajous32'] = lambda t: getLissajousCurve(1, 1, 3, 2, 0, t)
     Curves['Lissajous54'] = lambda t: getLissajousCurve(1, 1, 5, 4, 0, t)
-    Curves['ConeHelix'] = lambda t: getConeHelix(1, 16, t)
+    #Curves['ConeHelix'] = lambda t: getConeHelix(1, 16, t)
     Curves['Epicycloid1_3'] = lambda t: getEpicycloid(1.5, 0.5, t)
     #Curves['Epicycloid1_4'] = lambda t: getEpicycloid(2, 0.5, t)
 
+    plotbgcolor = (0.15, 0.15, 0.15)
     t1 = np.linspace(0, 1, N)
     maxdistances = []
     AllErrors = {}
@@ -281,19 +282,28 @@ def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps, doPlots = False):
             if doPlots:
                 plt.clf()
                 plt.subplot(121)
-                plt.scatter(X1[:, 0], X1[:, 1], 20, np.arange(X1.shape[0]), cmap = 'Spectral')
-                plt.scatter(X2[:, 0], X2[:, 1], 20, np.arange(X2.shape[0]), cmap = 'Spectral')
+                X2 = X2 - (np.mean(X2, 0) - np.mean(X1, 0)) + 3*np.std(X1)
+                plt.scatter(X1[:, 0], X1[:, 1], 20, np.arange(X1.shape[0]), cmap = 'Spectral', edgecolor = 'none')
+                plt.scatter(X2[:, 0], X2[:, 1], 20, np.arange(X2.shape[0]), cmap = 'Spectral', edgecolor = 'none')
+                ax = plt.gca()
+                ax.set_axis_bgcolor(plotbgcolor)
+                ax.set_xticks([])
+                ax.set_yticks([])
                 plt.axis('equal')
+                plt.title("TOPCs")
                 plt.subplot(122)
             (errors, Ps) = doAllAlignments(eng, X1, X2, t2, drawPaths = doPlots)
             if doPlots:
+                plt.xlabel("TOPC 1")
+                plt.ylabel("TOPC 2")
+                plt.title("Warping Paths")
                 plt.savefig("%s_%i.svg"%(name, k))
             types = errors.keys()
             for t in types:
                 if not t in AllErrors:
                     AllErrors[t] = np.zeros(NPerClass)
                 AllErrors[t][k] = errors[t]
-        sio.savemat("%sErrors.mat"%name, AllErrors)
+            sio.savemat("%sErrors.mat"%name, AllErrors)
         print("Elapsed Time %s: "%name, time.time() - tic)
     return AllErrors
 
@@ -315,4 +325,4 @@ if __name__ == '__main__':
     Kappa = 0.1
     NRelMag = 2
     NBumps = 2
-    AllErrors = doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps)
+    AllErrors = doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps, doPlots = False)

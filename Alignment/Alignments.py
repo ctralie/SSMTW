@@ -228,6 +228,7 @@ def SMWat(CSM, matchFunction, hvPenalty = -0.2, backtrace = False, backidx = [],
         if len(backidx) > 0:
             path = [backidx]
         idx = path[-1]
+        res['pathScore'] = D[idx[0], idx[1]]
         while B[idx[0], idx[1]] < 3:
             i = B[idx[0], idx[1]]
             idx = [idx[0]+pointers[i][0], idx[1] + pointers[i][1]]

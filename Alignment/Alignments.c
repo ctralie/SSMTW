@@ -35,7 +35,7 @@ double DTW(double* S, int M, int N, int i1, int j1, int i2, int j2) {
     double d, dul, dl, du;
     int A = i2 - i1 + 2;
     int B = j2 - j1 + 2;
-    D = malloc(A*B*sizeof(double));//Dynamic programming matrix
+    D = (double*)malloc(A*B*sizeof(double));//Dynamic programming matrix
     for (j = 1; j < B; j++) {
         //Fill first row with infinity
         D[j] = FLT_MAX;
@@ -76,7 +76,7 @@ double SMWat(double* S, int M, int N, int i1, int j1, int i2, int j2,
     int dirj = sign(j2 - j1);
     int A = diri*(i2 - i1) + 2;
     int B = dirj*(j2 - j1) + 2;
-    D = malloc(A*B*sizeof(double));//Dynamic programming matrix
+    D = (double*)malloc(A*B*sizeof(double));//Dynamic programming matrix
     for (j = 0; j < B; j++) {
         //Fill first row with zero
         D[j] = 0;

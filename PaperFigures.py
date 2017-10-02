@@ -9,7 +9,7 @@ from Alignment.Alignments import *
 from Alignment.AlignmentTools import *
 from Alignment.DTWGPU import *
 
-def makeIntroFigure():
+def ConceptFigure():
     initParallelAlgorithms()
     plotbgcolor = (0.15, 0.15, 0.15)
     np.random.seed(2)
@@ -18,9 +18,6 @@ def makeIntroFigure():
     WarpDict = getWarpDictionary(N)
     t1 = np.linspace(0, 1, M)
     t2 = getWarpingPath(WarpDict, 2, False)
-    #X = getLissajousCurve(1, 1, 3, 2, 0, t1)
-    #Y = getLissajousCurve(1, 1, 3, 2, 0, t2)
-    #Y = Y + np.array([[2, -4]])
 
     X = getTschirnhausenCubic(1, t1)
     Y = getTschirnhausenCubic(1, t2)
@@ -109,5 +106,241 @@ def makeIntroFigure():
 
     plt.savefig("IntroFig.svg", bbox_inches = 'tight')
 
+def IBDTWExample(compareCPU = False):
+    initParallelAlgorithms()
+
+    np.random.seed(6)
+    M = 200
+    N = 200
+    t1 = np.linspace(0, 1, M)
+    WarpDict = getWarpDictionary(N)
+    t2 = getWarpingPath(WarpDict, 2, False)
+    X1 = getPinchedCircle(t1)
+    X2 = getPinchedCircle(t2)
+    X2 = applyRandomRigidTransformation(X2)
+
+    Kappa = 0.1
+    NRelMag = 3
+    NBumps = 3
+    np.random.seed(40)
+    (X3, Bumps) = addRandomBumps(X2, Kappa, NRelMag, NBumps)
+    X3 = applyRandomRigidTransformation(X3)
+
+    R = np.array([[0, -1], [1, 0]])
+    X2 = X2.dot(R)
+    X2 = X2 + np.array([[-1, -1.5]])
+    X3 = X3 + np.array([6, -3])
+
+    SSM1 = getCSM(X1, X1)
+    SSM2 = getCSM(X2, X2)
+    SSM3 = getCSM(X3, X3)
+
+    if compareCPU:
+        tic = time.time()
+        D = doIBDTW(SSM1, SSM2)
+        print("Elapsed Time CPU: %g"%(time.time() - tic))
+        D2 = doIBDTWGPU(SSM1, SSM2, True, True)
+        sio.savemat("D.mat", {"D":D, "D2":D2})
+
+        plt.subplot(131)
+        plt.imshow(D, cmap = 'afmhot')
+        plt.subplot(132)
+        plt.imshow(D2, cmap = 'afmhot')
+        plt.subplot(133)
+        plt.imshow(D - D2, cmap = 'afmhot')
+        plt.show()
+
+    CSWM12 = doIBDTWGPU(SSM1, SSM2, True, True)
+    (DAll, CSM12, backpointers, path12) = DTWCSM(CSWM12)
+    pathProj12 = projectPath(path12, M, N)
+    res12 = getProjectedPathParam(pathProj12)
+
+    CSWM13 = doIBDTWGPU(SSM1, SSM3, True, True)
+    (DAll, CSM13, backpointers, path13) = DTWCSM(CSWM13)
+    pathProj13 = projectPath(path13, M, N)
+    res13 = getProjectedPathParam(pathProj13)
+
+    plt.figure(figsize=(10, 15))
+    plt.subplot(321)
+    plt.imshow(SSM1, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
+    plt.axis('off')
+    plt.title('SSM 1')
+    plt.subplot(323)
+    plt.imshow(SSM2, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
+    plt.axis('off')
+    plt.title('SSM 2')
+    plt.subplot(325)
+    plt.imshow(SSM3, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
+    plt.axis('off')
+    plt.title('SSM 3')
+
+    plt.subplot(322)
+    plt.scatter(X1[:, 0], X1[:, 1], 10, c=res12['C1'], edgecolor='none')
+    plt.text(np.mean(X1, 0)[0]-1.5, np.mean(X1, 0)[1]-0.3, '1', color='w', fontsize=36)
+    plt.scatter(X2[:, 0], X2[:, 1], 10, c=res12['C2'], edgecolor='none')
+    plt.text(np.mean(X2, 0)[0]-0.2, np.mean(X2, 0)[1]-0.3, '2', color='w', fontsize=36)
+    plt.scatter(X3[:, 0], X3[:, 1], 10, c=res13['C2'], edgecolor='none')
+    plt.text(np.mean(X3, 0)[0]-0.3, np.mean(X3, 0)[1], '3', color='w', fontsize=36)
+    plt.axis('equal')
+    plotbgcolor = (0.15, 0.15, 0.15)
+    ax = plt.gca()
+    ax.set_axis_bgcolor(plotbgcolor)
+    ax.get_xaxis().set_ticks([])
+    ax.get_yaxis().set_ticks([])
+    #plt.xlim([-3.5, 6])
+    #plt.ylim([-2.5, 6.5])
+    plt.axis('equal')
+    plt.title("TOPCs")
+
+    plt.subplot(324)
+    plt.imshow(CSWM12, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
+    plt.hold(True)
+    plt.scatter(path12[:, 1], path12[:, 0], 5, 'c', edgecolor = 'none')
+    plt.xlim([0, CSWM12.shape[1]])
+    plt.ylim([CSWM12.shape[0], 0])
+    plt.xlabel("TOPC 2")
+    plt.ylabel("TOPC 1")
+    ax = plt.gca()
+    ax.get_xaxis().set_ticks([])
+    ax.get_yaxis().set_ticks([])
+    plt.title("CSWM 1 to 2, Cost = %.3g"%CSM12[-1, -1])
+
+    plt.subplot(326)
+    plt.imshow(CSWM13, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
+    plt.hold(True)
+    plt.scatter(path13[:, 1], path13[:, 0], 5, 'c', edgecolor = 'none')
+    plt.xlim([0, CSWM13.shape[1]])
+    plt.ylim([CSWM13.shape[0], 0])
+    plt.xlabel("TOPC 3")
+    plt.ylabel("TOPC 1")
+    ax = plt.gca()
+    ax.get_xaxis().set_ticks([])
+    ax.get_yaxis().set_ticks([])
+    plt.title("CSWM 1 to 3, Cost = %.3g"%CSM13[-1, -1])
+
+    plt.savefig("IBDTWExample.svg", bbox_inches='tight')
+
+def Figure8Reparam():
+    plt.figure(figsize=(10, 10))
+    initParallelAlgorithms()
+    plotbgcolor = (0.15, 0.15, 0.15)
+    N = 200
+    t = np.linspace(0, 1, N)
+    ut = t**2
+    X1 = np.zeros((N, 2))
+    X1[:, 0] = np.cos(2*np.pi*t)
+    X1[:, 1] = np.sin(4*np.pi*t)
+
+    X2 = np.zeros((N, 2))
+    X2[:, 0] = np.cos(2*np.pi*ut)
+    X2[:, 1] = np.sin(4*np.pi*ut)
+    X2 = X2 + np.array([1, -2.2])
+
+    plt.subplot(221)
+    plt.scatter(X1[:, 0], X1[:, 1], 20, np.arange(N), cmap='Spectral', edgecolor = 'none')
+    plt.text(0.5, -0.2, '$t$', fontsize=30, color = 'w')
+    plt.scatter(X2[:, 0], X2[:, 1], 20, np.arange(N), cmap='Spectral', edgecolor = 'none')
+    plt.text(1.2, -2.3, '$u(t)$', fontsize=24, color = 'w')
+    ax = plt.gca()
+    ax.set_axis_bgcolor(plotbgcolor)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    plt.axis('equal')
+    plt.title("Figure 8 Different Parameterizations")
+
+    plt.subplot(222)
+    plt.plot(t, t, 'b', label='t')
+    plt.hold(True)
+    plt.plot(t, ut, 'r', label='u(t)')
+    plt.xlabel("t")
+    plt.ylabel("u(t)")
+    plt.title("Parameterization Functions")
+    plt.legend(bbox_to_anchor=(0.45, 0.9))
+
+    D1 = getCSM(X1, X1)
+    D2 = getCSM(X2, X2)
+    CSWM = doIBDTWGPU(D1, D2, True, True)
+    (DAll, CSM, backpointers, path) = DTWCSM(CSWM)
+    pathProj = projectPath(path, N, N, direction = 1)
+    idxs = np.arange(0, N, 20)
+
+    plt.subplot(223)
+    plt.imshow(D1, interpolation = 'nearest', cmap = 'afmhot')
+    for idx in idxs:
+        plt.plot([idx, idx], [0, N], 'k', lineWidth=2)
+        plt.plot([0, N], [idx, idx], 'k', lineWidth=2)
+    plt.scatter(-2*np.ones(N), np.arange(N), 50, np.arange(N), cmap = 'Spectral', edgecolor = 'none')
+    plt.scatter(np.arange(N), -2*np.ones(N), 50, np.arange(N), cmap = 'Spectral', edgecolor = 'none')
+    plt.xlim([-6, N])
+    plt.ylim([N, -6])
+    plt.axis('off')
+    plt.title("SSM Parameterized by $t$")
+
+    plt.subplot(224)
+    plt.imshow(D2, interpolation = 'nearest', cmap = 'afmhot')
+    for idxother in idxs:
+        idx = pathProj[idxother, 1]
+        plt.plot([idx, idx], [0, N], 'k', lineWidth=2)
+        plt.plot([0, N], [idx, idx], 'k', lineWidth=2)
+    plt.scatter(-2*np.ones(N), np.arange(N), 50, np.arange(N), cmap = 'Spectral', edgecolor = 'none')
+    plt.scatter(np.arange(N), -2*np.ones(N), 50, np.arange(N), cmap = 'Spectral', edgecolor = 'none')
+    plt.xlim([-6, N])
+    plt.ylim([N, -6])
+    plt.axis('off')
+    plt.title("SSM Parameterized by $u(t)$")
+
+    plt.savefig("Figure8Reparam.svg", bbox_inches = 'tight')
+
+def Figure8Normalization():
+    plt.figure(figsize=(10, 10))
+    initParallelAlgorithms()
+    N = 200
+    t = np.linspace(0, 1, N)
+    ut = t**2
+    X1 = np.zeros((N, 2))
+    X1[:, 0] = np.cos(2*np.pi*t)
+    X1[:, 1] = np.sin(4*np.pi*t)
+
+    X2 = np.zeros((N, 2))
+    X2[:, 0] = np.cos(2*np.pi*ut)
+    X2[:, 1] = np.sin(4*np.pi*ut)
+
+    D1 = getCSM(X1, X1)
+    D2 = getCSM(X2, X2)
+    D1Norm = get2DRankSSM(D1)
+    D2Norm = get2DRankSSM(D2)
+
+    CSWM = doIBDTWGPU(D1, D2, True, True)
+    (DAll, CSM, backpointers, path) = DTWCSM(CSWM)
+
+    CSWMNorm = doIBDTWGPU(D1Norm, D2Norm, True, True)
+    (DAll, CSM, backpointers, pathNorm) = DTWCSM(CSWMNorm)
+
+    plt.subplot(221)
+    plt.imshow(D1, cmap = 'afmhot', interpolation = 'nearest')
+    plt.title("Original SSM")
+    plt.subplot(222)
+    plt.imshow(D1Norm, cmap = 'afmhot', interpolation = 'nearest')
+    plt.title("Normalized SSM")
+    plt.subplot(223)
+    plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
+    plt.scatter(path[:, 1], path[:, 0], 5, 'c', edgecolor = 'none')
+    plt.xlim([0, N])
+    plt.ylim([N, 0])
+    plt.title("CSWM Original")
+    plt.subplot(224)
+    plt.imshow(CSWMNorm, cmap = 'afmhot', interpolation = 'nearest')
+    plt.scatter(pathNorm[:, 1], pathNorm[:, 0], 5, 'c', edgecolor = 'none')
+    plt.xlim([0, N])
+    plt.ylim([N, 0])
+    plt.title("CSWM Norm")
+
+    plt.savefig("2DRankNorm.svg", bbox_inches = 'tight')
+
+
+
 if __name__ == '__main__':
-    makeIntroFigure()
+    #ConceptFigure()
+    #IBDTWExample()
+    #Figure8Reparam()
+    Figure8Normalization()

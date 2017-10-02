@@ -137,8 +137,8 @@ if __name__ == '__main__':
     #CSWM = np.exp(-CSWM/(np.mean(CSWM)))
     CSWM = CSWM - np.median(CSWM)
     CSWM = CSWM/np.max(np.abs(CSWM))
-    plt.imshow(CSWM, interpolation = 'none')
-    plt.show()
+    #plt.imshow(CSWM, interpolation = 'none')
+    #plt.show()
 
     matchfn = lambda x: x
     hvPenalty = -0.4
@@ -150,12 +150,14 @@ if __name__ == '__main__':
     res = SMWat(CSWM, matchfn, hvPenalty, backtrace = True)
     P = res['path']
     P = np.array(P)
+    score1 = res['pathScore']
     path = projectPath(P, M, N)
     res = getProjectedPathParam(path)
 
     res2 = SMWat(CSWM, matchfn, hvPenalty, backtrace = True, backidx = [75, 285])
     P2 = res2['path']
     P2 = np.array(P2)
+    score2 = res2['pathScore']
     path2 = projectPath(P2, M, N)
     res2 = getProjectedPathParam(path2)
 
@@ -196,7 +198,7 @@ if __name__ == '__main__':
     plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
     plt.xlim([-2, N])
     plt.ylim([CSWM.shape[0], -2])
-    plt.title("PCSWM Backtrace 1")
+    plt.title("PCSWM Backtrace 1, Score = %.3g"%score1)
     plt.scatter(P[:, 1], P[:, 0], 30, 'k')
     plt.scatter(path[:, 1], path[:, 0], 20, c = res['C2'], edgecolor = 'none')
 
@@ -218,7 +220,7 @@ if __name__ == '__main__':
     plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
     plt.xlim([-2, N])
     plt.ylim([CSWM.shape[0], -2])
-    plt.title("PCSWM Backtrace 2")
+    plt.title("PCSWM Backtrace 2, Score = %.3g"%score2)
     plt.scatter(P2[:, 1], P2[:, 0], 30, 'k')
     plt.scatter(path2[:, 1], path2[:, 0], 20, c = res2['C2'], edgecolor = 'none')
 

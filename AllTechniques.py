@@ -94,7 +94,7 @@ def doAllAlignments(eng, X1, X2, t2, useGPU = True, drawPaths = False, drawAlign
             plt.show()
         errors[ptype] = err
 
-    types = ['PGTW', 'PIBDTW', 'PIBDTWN', 'PCTW', 'PDTW', 'PIMW']
+    types = ['PGTW', 'PIBDTW', 'PIBDTWN', 'PCTW', 'PDTW', 'PDDTW', 'PIMW']
     if drawPaths:
         plt.hold(True)
         for i in range(len(types)):
@@ -102,7 +102,7 @@ def doAllAlignments(eng, X1, X2, t2, useGPU = True, drawPaths = False, drawAlign
             P = Ps[types[i]]
             plt.plot(P[:, 0], P[:, 1])
         plt.plot(PGT[:, 0], PGT[:, 1], 'k', lineWidth = 4, lineStyle = '--')
-        plt.legend(["%s %.3g"%(t[1::], errors[t]) for t in types] + ["GT"], bbox_to_anchor=(0, 1), loc=2)
+        plt.legend(["%s %.3g"%(t[1::], errors[t]) for t in types] + ["GroundTruth"], bbox_to_anchor=(0, 1), loc=2, fontsize=12)
         plt.xlim([0, np.max(PGT[:, 0])])
         plt.ylim([0, np.max(PGT[:, 1])])
 
