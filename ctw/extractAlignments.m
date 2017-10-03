@@ -6,17 +6,17 @@
 function [] = extractAlignments()
     addPath();
     load('Xs.mat');
-
-    addPath;
     prSet(1);
-    %% Setup time series  
-
+    %% Setup time series
     X0s = cell(1, 2);
-    X0s{1} = X1';
-    X0s{2} = X2';
+    X0s{1} = double(X1');
+    X0s{2} = double(X2');
 
-    Xs = pcas(X0s, st('d', 0.999));
-    fprintf(1, 'Dimension = %i\n', size(Xs{1}, 1));
+    Xs = pcas(X0s, st('d', 0.99));
+    Xs2 = pcas(X0s, st('d', 5));
+    fprintf(1, 'Original Dimension = %i\n', size(X0s{1}, 1));
+    fprintf(1, 'Reduced Dimension = %i\n', size(Xs{1}, 1));
+    fprintf(1, 'Reduced Dimension 2 = %i\n', size(Xs2{1}, 1));
     X1Mean = bsxfun(@minus, Xs{1}', mean(Xs{1}', 1));
     IMWReg = 30*mean(sqrt(sum(X1Mean.^2, 2)));
     fprintf(1, 'IMWReg = %g\n', IMWReg);
@@ -28,7 +28,7 @@ function [] = extractAlignments()
     %% algorithm parameters
     parDtw = [];
     parImw = st('lA', IMWReg, 'lB', IMWReg); % IMW: regularization weight
-    parCca = st('d', 3, 'lams', .1); % CCA: reduce dimension to keep at least 0.95 energy
+    parCca = st('d', 3, 'lams', 0.1); % CCA: reduce dimension to keep at least 0.95 energy
     parCtw = st('nItMa', 100);
     parGN = st('nItMa', 2, 'inp', 'linear'); % Gauss-Newton: 2 iterations to update the weight in GTW, 
     parGtw = st('nItMa', 20);
@@ -43,11 +43,7 @@ function [] = extractAlignments()
     %% dtw
     aliDtw = dtw(Xs, aliT, parDtw);
     PDTW = aliDtw.P;
-
-    %% truth (approximated by DTW on aligning sequences with the same feature)
-    aliT = pdtw(Xs, aliUtw, [], parDtw); 
-    aliT.alg = 'truth';
-
+    
     %% ddtw
     aliDdtw = ddtw(Xs, aliT, parDtw);
     PDDTW = aliDdtw.P;
@@ -57,13 +53,13 @@ function [] = extractAlignments()
     PIMW = aliImw.P;
 
     %% ctw
-    aliCtw = ctw(Xs, aliUtw, aliT, parCtw, parCca, parDtw);
+    aliCtw = ctw(Xs2, aliDtw, aliT, parCtw, parCca, parDtw);
     PCTW = aliCtw.P;
 
     %% gtw
     PGTW = aliUtw.P;
     try
-        aliGtw = gtw(Xs, bas, aliUtw, aliT, parGtw, parCca, parGN);
+        aliGtw = gtw(Xs2, bas, aliUtw, aliT, parGtw, parCca, parGN);
         PGTW = aliGtw.P;
     catch ME
         disp('Error running GTW');

@@ -231,6 +231,7 @@ def runAlignmentExperiments(eng, K = 10, NPerVideo = 50):
             I2Warped = getInterpolatedEuclideanTimeSeries(I2, t2)
             sio.savemat("Weizmann.mat", {"I1":I1, "I2Warped":I2Warped, "t2":t2})
             plt.clf()
+            sio.savemat("%i_%i.mat"%(vidx, expNum), {"X1":I1, "X2":I2Warped})
             (errors, Ps) = doAllAlignments(eng, I1, I2Warped, t2, drawPaths = True)
             plt.savefig("%i_%i.svg"%(vidx, expNum))
             types = errors.keys()
@@ -244,7 +245,7 @@ if __name__ == '__main__':
     eng = initMatlabEngine()
     initParallelAlgorithms()
     #alignWalkingVideos(eng)
-    runAlignmentExperiments(eng, NPerVideo = 50)
+    runAlignmentExperiments(eng, NPerVideo = 100)
     #partialAlignWalkingVideos(crossModal = True)
 
 if __name__ == '__main__2':
