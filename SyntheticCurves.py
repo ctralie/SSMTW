@@ -292,12 +292,13 @@ def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps, doPlots = False):
                 plt.axis('equal')
                 plt.title("TOPCs")
                 plt.subplot(122)
-            (errors, Ps) = doAllAlignments(eng, X1, X2, t2, drawPaths = doPlots)
+            (errors, Ps) = doAllAlignments(eng, X1, X2, t2, doPCA = 0, drawPaths = doPlots)
             if doPlots:
                 plt.xlabel("TOPC 1")
                 plt.ylabel("TOPC 2")
                 plt.title("Warping Paths")
                 plt.savefig("%s_%i.svg"%(name, k))
+                sio.savemat("%s_%i.mat"%(name, k), Ps)
             types = errors.keys()
             for t in types:
                 if not t in AllErrors:
@@ -325,4 +326,4 @@ if __name__ == '__main__':
     Kappa = 0.1
     NRelMag = 2
     NBumps = 2
-    AllErrors = doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps, doPlots = True)
+    AllErrors = doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps, doPlots = False)

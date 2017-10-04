@@ -16,7 +16,6 @@ def getIBDTWAlignment(X1, X2, useGPU = True, normFn = get2DRankSSM, Verbose = Fa
     SSM1Norm = np.array(normFn(SSM1), dtype = np.float32)
     SSM2Norm = np.array(normFn(SSM2), dtype = np.float32)
     if useGPU:
-        import pycuda.gpuarray as gpuarray
         D = doIBDTWGPU(SSM1, SSM2, returnCSM = True)
         DNorm = doIBDTWGPU(SSM1Norm, SSM2Norm, returnCSM = True)
     else:
@@ -68,12 +67,12 @@ def getIBDTWAlignment(X1, X2, useGPU = True, normFn = get2DRankSSM, Verbose = Fa
         plt.title("CSWM Normed")
     return (path, pathN)
 
-def doAllAlignments(eng, X1, X2, t2, useGPU = True, drawPaths = False, drawAlignmentScores = False):
+def doAllAlignments(eng, X1, X2, t2, doPCA = 1, useGPU = True, drawPaths = False, drawAlignmentScores = False):
     tic = time.time()
     (PIBDTW, PIBDTWN) = getIBDTWAlignment(X1, X2, useGPU = useGPU)
     timeIBDTW = time.time() - tic
     tic = time.time()
-    Ps = getCTWAlignments(eng, X1, X2)
+    Ps = getCTWAlignments(eng, X1, X2, doPCA)
     timeOthers = time.time() - tic
     print("IBDTW Time: %g, Others Time: %g"%(timeIBDTW, timeOthers))
     Ps['PIBDTW'] = PIBDTW

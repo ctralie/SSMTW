@@ -337,10 +337,69 @@ def Figure8Normalization():
 
     plt.savefig("2DRankNorm.svg", bbox_inches = 'tight')
 
+def SyntheticResults():
+    Curves = ['VivianiFigure8', 'TSCubic', 'TorusKnot23', 'TorusKnot35', 'PinchedCircle', 'Lissajous32', 'Lissajous54', 'ConeHelix', 'Epicycloid1_3']
+    Curves3D = ['VivianiFigure8', 'TorusKnot23', 'TorusKnot35','ConeHelix']
+    Types = ['GTW', 'IMW', 'DTW', 'DDTW', 'CTW', 'IBDTW', 'IBDTWN']
 
+    AllErrors = {}
+    for t in Types:
+        AllErrors[t] = np.array([])
+
+    for curve in Curves:
+        #X = sio.loadmat("Results/Synthetic/%sErrors.mat"%curve)
+        X = sio.loadmat("Results/Synthetic_DTWInit/%sErrors.mat"%curve)
+        for t in Types:
+            AllErrors[t] = np.concatenate((AllErrors[t], X['P%s'%t].flatten()), 0)
+
+    N = len(AllErrors[AllErrors.keys()[0]])
+    X = np.zeros((N, len(AllErrors)))
+    for i in range(len(Types)):
+        X[:, i] = AllErrors[Types[i]]
+
+    plt.figure(figsize=(6, 3))
+    plt.boxplot(X, labels = Types)
+    plt.xlabel("Alignment Algorithm")
+    plt.ylabel("Alignment Error")
+    plt.title("Synthetic Curve Alignment Results")
+    plt.ylim([0, 0.5])
+    plt.savefig("SyntheticBoxPlotDTWInit.svg", bbox_inches = 'tight')
+
+def WeizmannResults():
+    Types = ['GTW', 'IMW', 'DTW', 'DDTW', 'CTW', 'IBDTW', 'IBDTWN']
+    AllErrors = sio.loadmat("Results/WeizmannErrors100.mat")
+    N = AllErrors['PGTW'].size
+    X = np.zeros((N, len(Types)))
+    for i in range(len(Types)):
+        X[:, i] = AllErrors["P%s"%Types[i]].flatten()
+
+    plt.figure(figsize=(6, 3))
+    plt.boxplot(X, labels = Types)
+    plt.xlabel("Alignment Algorithm")
+    plt.ylabel("Alignment Error")
+    plt.title("Weizmann Mask To EDT Results")
+    plt.savefig("WeizmannResults.svg", bbox_inches = 'tight')
+
+def BUResults():
+    Types = ['GTW', 'IMW', 'DTW', 'DDTW', 'CTW', 'IBDTW', 'IBDTWN']
+    AllErrors = sio.loadmat("Results/BUErrors.mat")
+    N = AllErrors['PGTW'].size
+    X = np.zeros((N, len(Types)))
+    for i in range(len(Types)):
+        X[:, i] = AllErrors["P%s"%Types[i]].flatten()
+
+    plt.figure(figsize=(6, 3))
+    plt.boxplot(X, labels = Types)
+    plt.xlabel("Alignment Algorithm")
+    plt.ylabel("Alignment Error")
+    plt.title("BU4D Face 2D Video To 3D Video")
+    plt.savefig("BUResults.svg", bbox_inches = 'tight')
 
 if __name__ == '__main__':
     #ConceptFigure()
     #IBDTWExample()
     #Figure8Reparam()
-    Figure8Normalization()
+    #Figure8Normalization()
+    SyntheticResults()
+    WeizmannResults()
+    BUResults()

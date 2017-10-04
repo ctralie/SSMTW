@@ -143,7 +143,7 @@ def precomputeEuclideanEmbeddings():
                 I = getPCAVideo(I)
                 sio.savemat(filename, {"I":I, "IDims":IDims})
 
-def runAlignmentExperiments(eng, seed, K = 10, NPerFace = 10):
+def runAlignmentExperiments(eng, seed, K = 10, NPerFace = 10, doPlot = False):
     """
     Run experiments randomly warping the video and trying to align that
     to the 3D histograms
@@ -165,8 +165,9 @@ def runAlignmentExperiments(eng, seed, K = 10, NPerFace = 10):
                 I2Warped = getInterpolatedEuclideanTimeSeries(I2, t2)
                 sio.savemat("BU.mat", {"I1":I1, "I2Warped":I2Warped, "t2":t2})
                 plt.clf()
-                (errors, Ps) = doAllAlignments(eng, I1, I2Warped, t2, drawPaths = True)
-                plt.savefig("%i_%i_%i.svg"%(e, i, expNum))
+                (errors, Ps) = doAllAlignments(eng, I1, I2Warped, t2, drawPaths = doPlot)
+                if doPlot:
+                    plt.savefig("%i_%i_%i.svg"%(e, i, expNum))
                 types = errors.keys()
                 for t in types:
                     if not t in AllErrors:
@@ -177,4 +178,4 @@ def runAlignmentExperiments(eng, seed, K = 10, NPerFace = 10):
 if __name__ == '__main__':
     initParallelAlgorithms()
     eng = initMatlabEngine()
-    runAlignmentExperiments(eng, 1, K = 10, NPerFace = 10)
+    runAlignmentExperiments(eng, 1, K = 10, NPerFace = 10, doPlot = True)

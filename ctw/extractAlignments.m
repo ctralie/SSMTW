@@ -7,16 +7,36 @@ function [] = extractAlignments()
     addPath();
     load('Xs.mat');
     prSet(1);
+    
+    if size(X1, 2) ~= size(X2, 2)
+        %Zeropad if sizes aren't the same
+        N = max(size(X1, 2), size(X2, 2));
+        if size(X1, 2) < N
+            temp = zeros(size(X1, 1), N);
+            temp(:, 1:size(X1, 2)) = X1;
+            X1 = temp;
+        end
+        if size(X2, 2) < N
+            temp = zeros(size(X2, 1), N);
+            temp(:, 1:size(X2, 2)) = X2;
+            X2 = temp;
+        end
+    end
+    
     %% Setup time series
     X0s = cell(1, 2);
     X0s{1} = double(X1');
     X0s{2} = double(X2');
-
-    Xs = pcas(X0s, st('d', 0.99));
-    Xs2 = pcas(X0s, st('d', 5));
-    fprintf(1, 'Original Dimension = %i\n', size(X0s{1}, 1));
-    fprintf(1, 'Reduced Dimension = %i\n', size(Xs{1}, 1));
-    fprintf(1, 'Reduced Dimension 2 = %i\n', size(Xs2{1}, 1));
+    if doPCA
+        Xs = pcas(X0s, st('d', 0.99));
+        Xs2 = pcas(X0s, st('d', 5));
+        fprintf(1, 'Original Dimension = %i\n', size(X0s{1}, 1));
+        fprintf(1, 'Reduced Dimension = %i\n', size(Xs{1}, 1));
+        fprintf(1, 'Reduced Dimension 2 = %i\n', size(Xs2{1}, 1));
+    else
+        Xs = X0s;
+        Xs2 = X0s;
+    end
     X1Mean = bsxfun(@minus, Xs{1}', mean(Xs{1}', 1));
     IMWReg = 30*mean(sqrt(sum(X1Mean.^2, 2)));
     fprintf(1, 'IMWReg = %g\n', IMWReg);

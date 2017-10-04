@@ -161,7 +161,7 @@ if __name__ == '__main__':
     path2 = projectPath(P2, M, N)
     res2 = getProjectedPathParam(path2)
 
-    plt.figure(figsize=(15, 15))
+    plt.figure(figsize=(11, 10))
     plt.subplot(321)
     plt.scatter(XL[:, 0], XL[:, 1], 20, np.arange(M), cmap = 'Reds', edgecolor = 'none')
     plt.scatter(XR[:, 0], XR[:, 1], 20, np.arange(N), cmap = 'Blues', edgecolor = 'none')

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import os
 import matlab.engine
 
-def getCTWAlignments(eng, X1, X2):
+def getCTWAlignments(eng, X1, X2, doPCA = 1):
     """
     Wrap around the CTW library to compute warping paths between
     X1 and X2 using DTW, DDTW, IMW, CTW, and GTW
@@ -14,7 +14,7 @@ def getCTWAlignments(eng, X1, X2):
     :param X2: M x d Euclidean vector
     :returns: dictionary of warping results
     """
-    sio.savemat("ctw/Xs.mat", {"X1":X1, "X2":X2})
+    sio.savemat("ctw/Xs.mat", {"X1":X1, "X2":X2, "doPCA":doPCA})
     eng.extractAlignments(nargout=0)
     res = sio.loadmat("ctw/matlabResults.mat")
     os.remove("ctw/Xs.mat")
