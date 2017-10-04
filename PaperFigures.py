@@ -9,6 +9,14 @@ from Alignment.Alignments import *
 from Alignment.AlignmentTools import *
 from Alignment.DTWGPU import *
 
+def makeColorbar(dim1, dim2, k):
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    plt.subplot(dim1, dim2, k)
+    ax = plt.gca()
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad = 0.05)
+    plt.colorbar(cax = cax)
+
 def ConceptFigure():
     initParallelAlgorithms()
     plotbgcolor = (0.15, 0.15, 0.15)
@@ -292,7 +300,7 @@ def Figure8Reparam():
     plt.savefig("Figure8Reparam.svg", bbox_inches = 'tight')
 
 def Figure8Normalization():
-    plt.figure(figsize=(10, 10))
+    plt.figure(figsize=(11.5, 10))
     initParallelAlgorithms()
     N = 200
     t = np.linspace(0, 1, N)
@@ -319,15 +327,20 @@ def Figure8Normalization():
     plt.subplot(221)
     plt.imshow(D1, cmap = 'afmhot', interpolation = 'nearest')
     plt.title("Original SSM")
+    makeColorbar(2, 2, 1)
+    
     plt.subplot(222)
     plt.imshow(D1Norm, cmap = 'afmhot', interpolation = 'nearest')
     plt.title("Normalized SSM")
+    makeColorbar(2, 2, 2)
+    
     plt.subplot(223)
     plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
     plt.scatter(path[:, 1], path[:, 0], 5, 'c', edgecolor = 'none')
     plt.xlim([0, N])
     plt.ylim([N, 0])
     plt.title("CSWM Original")
+    
     plt.subplot(224)
     plt.imshow(CSWMNorm, cmap = 'afmhot', interpolation = 'nearest')
     plt.scatter(pathNorm[:, 1], pathNorm[:, 0], 5, 'c', edgecolor = 'none')

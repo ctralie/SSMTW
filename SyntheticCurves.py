@@ -259,7 +259,7 @@ def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps, doPlots = False):
 
     plotbgcolor = (0.15, 0.15, 0.15)
     t1 = np.linspace(0, 1, N)
-    maxdistances = []
+    distortionRatios = []
     AllErrors = {}
     if doPlots:
         plt.figure(figsize = (12, 6))
@@ -275,7 +275,9 @@ def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps, doPlots = False):
             #Introduce some metric distortion
             (x, Bumps) = addRandomBumps(X2, Kappa, NRelMag, NBumps)
             diff = np.sqrt(np.sum((x-X2)**2, 1))
-            maxdistances.append(np.max(diff))
+            GHDist = np.max(diff)
+            D = getCSM(X2, X2)
+            distortionRatios.append(GHDist/np.max(D))
             #Apply a random rigid transformation
             x = applyRandomRigidTransformation(x)
             X2 = x
@@ -305,6 +307,7 @@ def doExperiment(N, NPerClass, K, Kappa, NRelMag, NBumps, doPlots = False):
                     AllErrors[t] = np.zeros(NPerClass)
                 AllErrors[t][k] = errors[t]
             sio.savemat("%sErrors.mat"%name, AllErrors)
+            sio.savemat("DistortionRatios.mat", {"distortionRatios":np.array(distortionRatios)})
         print("Elapsed Time %s: "%name, time.time() - tic)
     return AllErrors
 
