@@ -22,14 +22,17 @@ getSumSquares_ = None
 finishCSM_ = None
 
 def getResourceString(filename):
-    if 'SSMTW' not in sys.modules:
+    s = ''
+    if 'SSMTW' in sys.modules:
+        #If calling from imported package
+        s = pkg_resources.resource_string('SSMTW', '/Alignment/%s'%filename)
+    elif 'Alignment' in sys.modules:
+        s = pkg_resources.resource_string('Alignment', '/%s'%filename)
+    else:
         #If calling from within this directory
         fin = open(filename)
         s = fin.read()
         fin.close()
-    else:
-        #If calling from imported package
-        s = pkg_resources.resource_string('SSMTW', '/Alignment/%s'%filename)
     return s
 
 def initParallelAlgorithms():
