@@ -33,7 +33,7 @@ def getResourceString(filename):
         fin = open(filename)
         s = fin.read()
         fin.close()
-    return s
+    return s.decode("utf8")
 
 def initParallelAlgorithms():
     global DTW_
