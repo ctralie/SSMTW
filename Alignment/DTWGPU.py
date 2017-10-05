@@ -12,18 +12,17 @@ import time
 import scipy.io as sio
 import pkg_resources
 import sys
+import Alignment
 from Alignment.Alignments import *
 from Alignment.AlignmentTools import *
 import Alignment._SequenceAlignment as SAC
 
 from pycuda.compiler import SourceModule
 
-DTW_ = None
-DTWSSM_ = None
-SMWat_ = None
-SMWatSSM_ = None
-getSumSquares_ = None
-finishCSM_ = None
+Alignment.DTW_ = None
+Alignment.DTWSSM_ = None
+Alignment.SMWat_ = None
+Alignment.SMWatSSM_ = None
 
 def getResourceString(filename):
     s = ''
@@ -39,26 +38,21 @@ def getResourceString(filename):
     return s.decode('utf8')
 
 def initParallelAlgorithms():
-    global DTW_
-    global DTWSSM_
-    global SMWat_
-    global SMWatSSM_
-
     s = getResourceString("DTWGPU.cu")
     mod = SourceModule(s)
-    DTW_ = mod.get_function("DTW")
+    Alignment.DTW_ = mod.get_function("DTW")
 
     s = getResourceString("DTWSSMGPU.cu")
     mod = SourceModule(s)
-    DTWSSM_ = mod.get_function("DTWSSM")
+    Alignment.DTWSSM_ = mod.get_function("DTWSSM")
 
     s = getResourceString("SMWatGPU.cu")
     mod = SourceModule(s)
-    SMWat_ = mod.get_function("SMWat")
+    Alignment.SMWat_ = mod.get_function("SMWat")
 
     s = getResourceString("SMWatSSMGPU.cu")
     mod = SourceModule(s)
-    SMWatSSM_ = mod.get_function("SMWatSSM")
+    Alignment.SMWatSSM_ = mod.get_function("SMWatSSM")
 
 def roundUpPow2(x):
     return np.array(int(2**np.ceil(np.log2(float(x)))), dtype=np.int32)
@@ -77,7 +71,7 @@ def doDTWGPU(CSM, ci, cj):
     N = np.array(N, dtype=np.int32)
     ci = np.array(ci, dtype = np.int32)
     cj = np.array(cj, dtype = np.int32)
-    DTW_(CSM, M, N, ci, cj, diagLen, diagLenPow2, res, block=(int(NThreads), 1, 1), grid=(1, 1), shared=12*diagLen)
+    Alignment.DTW_(CSM, M, N, ci, cj, diagLen, diagLenPow2, res, block=(int(NThreads), 1, 1), grid=(1, 1), shared=12*diagLen)
     ret = res.get()[0]
     return ret
 
@@ -106,7 +100,7 @@ def doIBDTWGPU(SSMA, SSMB, returnCSM = False, printElapsedTime = False):
     N = np.array(N, dtype=np.int32)
     tic = time.time()
 
-    DTWSSM_(SSMA, SSMB, CSM, M, N, diagLen, diagLenPow2, block=(int(NThreads), 1, 1), grid=(int(M), int(N)), shared=12*diagLen)
+    Alignment.DTWSSM_(SSMA, SSMB, CSM, M, N, diagLen, diagLenPow2, block=(int(NThreads), 1, 1), grid=(int(M), int(N)), shared=12*diagLen)
     if returnCSM:
         return CSM.get()
     else:
@@ -140,7 +134,7 @@ def doSMWatGPU(CSM, hvPenalty):
     NThreads = min(diagLen, 512)
     M = np.array(M, dtype=np.int32)
     N = np.array(N, dtype=np.int32)
-    SMWat_(CSM, D, U, L, UL, M, N, diagLen, diagLenPow2, phvPenalty, block=(int(NThreads), 1, 1), grid=(1, 1), shared=12*diagLen)
+    Alignment.SMWat_(CSM, D, U, L, UL, M, N, diagLen, diagLenPow2, phvPenalty, block=(int(NThreads), 1, 1), grid=(1, 1), shared=12*diagLen)
     return {'D':D.get(), 'U':U.get(), 'L':L.get(), 'UL':UL.get()}
 
 def doIBSMWatGPUHelper(SSMA, SSMB, hvPenalty, flip = False):
@@ -165,7 +159,7 @@ def doIBSMWatGPUHelper(SSMA, SSMB, hvPenalty, flip = False):
         pflip = np.array(1, dtype=np.int32)
     phvPenalty = np.array(hvPenalty, dtype = np.float32)
 
-    SMWatSSM_(SSMA, SSMB, CSM, M, N, diagLen, diagLenPow2, phvPenalty, pflip, block=(int(NThreads), 1, 1), grid=(int(M), int(N)), shared=12*diagLen)
+    Alignment.SMWatSSM_(SSMA, SSMB, CSM, M, N, diagLen, diagLenPow2, phvPenalty, pflip, block=(int(NThreads), 1, 1), grid=(int(M), int(N)), shared=12*diagLen)
     CSM = CSM.get()
     return CSM
 
