@@ -133,7 +133,7 @@ if __name__ == '__main__':
     M = np.max(DL)
     DL = DL/M
     DR = DR/M
-    CSWM = doIBSMWatGPU(DL, DR, -0.3, True)
+    CSWM = doIBSMWatGPU(DL, DR, -0.4, True)
     #CSWM = np.exp(-CSWM/(np.mean(CSWM)))
     CSWM = CSWM - np.median(CSWM)
     CSWM = CSWM/np.max(np.abs(CSWM))
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     plt.scatter(-4*np.ones(M), np.arange(M), 80, np.arange(M), edgecolor = 'none', cmap = 'Reds')
     plt.xlim([-7, N])
     plt.ylim([M, -7])
-    plt.title("PCSWM")
+    plt.title("PCSSM")
 
 
 
@@ -198,7 +198,7 @@ if __name__ == '__main__':
     plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
     plt.xlim([-2, N])
     plt.ylim([CSWM.shape[0], -2])
-    plt.title("PCSWM Backtrace 1, Score = %.3g"%score1)
+    plt.title("PCSSM Backtrace 1, Score = %.3g"%score1)
     plt.scatter(P[:, 1], P[:, 0], 30, 'k')
     plt.scatter(path[:, 1], path[:, 0], 20, c = res['C2'], edgecolor = 'none')
 
@@ -220,7 +220,7 @@ if __name__ == '__main__':
     plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
     plt.xlim([-2, N])
     plt.ylim([CSWM.shape[0], -2])
-    plt.title("PCSWM Backtrace 2, Score = %.3g"%score2)
+    plt.title("PCSSM Backtrace 2, Score = %.3g"%score2)
     plt.scatter(P2[:, 1], P2[:, 0], 30, 'k')
     plt.scatter(path2[:, 1], path2[:, 0], 20, c = res2['C2'], edgecolor = 'none')
 

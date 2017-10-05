@@ -401,7 +401,7 @@ def BUResults():
     for i in range(len(Types)):
         X[:, i] = AllErrors["P%s"%Types[i]].flatten()
 
-    plt.figure(figsize=(6, 3))
+    plt.figure(figsize=(6, 4))
     plt.boxplot(X, labels = Types)
     plt.xlabel("Alignment Algorithm")
     plt.ylabel("Alignment Error")
@@ -413,6 +413,6 @@ if __name__ == '__main__':
     #IBDTWExample()
     #Figure8Reparam()
     #Figure8Normalization()
-    SyntheticResults()
-    WeizmannResults()
+    #SyntheticResults()
+    #WeizmannResults()
     BUResults()

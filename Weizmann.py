@@ -43,7 +43,7 @@ def getWeiAlignedMask(action, doCrop = True):
         I = I[idx[0]:idx[1], :]
     return (I, IDims)
 
-def getEDT(I, IDims, doBorderDistance = False, doPlot = False):
+def getEDT(I, IDims, doBorderDistance = False, doPlot = False, doFlip = False):
     """
     Return the Euclidean distance transform of each frame
     :param I: An NFrames x NPixels binary mask video
@@ -55,6 +55,8 @@ def getEDT(I, IDims, doBorderDistance = False, doPlot = False):
     X = 0*I
     for i in range(I.shape[0]):
         F = np.reshape(I[i, :], IDims)
+        if doFlip:
+            F = np.fliplr(F)
         F2 = scipy.ndimage.morphology.distance_transform_edt(F)
         if doBorderDistance:
             F2 += scipy.ndimage.morphology.distance_transform_edt(1-F)
@@ -125,6 +127,58 @@ def alignWalkingVideos(eng):
             plt.axis('off')
             plt.title("Frame %i"%idx)
         plt.savefig("%i.png"%i, bbox_inches = 'tight')
+
+def plotAlignedWalkingVideos():
+    IsMask = []
+    MaskDims = []
+    Is = []
+    SSMs = []
+    paths = [[]]
+    counter = 1
+    frames = range(20, 40, 3)
+    videos = ["daria_walk", "ira_walk"]
+    for video in videos:
+        (I, IDims) = getWeiAlignedMask(video)
+        if counter > 1:
+            I = getEDT(I, IDims, doFlip = True)
+        IsMask.append(1.0*I)
+        MaskDims.append(IDims)
+        D = getSSM(I)
+        D = get2DRankSSM(D)
+        SSMs.append(D)
+
+        if counter > 1:
+            D = doIBDTW(SSMs[0], SSMs[-1])
+            (DAll, CSM, backpointers, pathIBDTW) = DTWCSM(D)
+            paths.append(projectPath(pathIBDTW, D.shape[0], D.shape[1], 1))
+        counter += 1
+        (I, IDims) = loadImageIOVideo("%s/walk/%s.avi"%(WEIPATH, video))
+        idx = WEICROP[video]
+        I = I[idx[0]:idx[1], :]
+        Is.append((I, IDims))
+
+    #Plot frames aligned to each other
+    plt.figure(figsize=(1.5*len(frames), 4))
+    for i in range(len(frames)):
+        plt.subplot(2, len(frames), i+1)
+        I = IsMask[0]
+        F = I[frames[i], :]
+        F = np.reshape(F, MaskDims[0])
+        plt.imshow(F, cmap = 'gray', interpolation = 'nearest')
+        plt.title("Frame %i"%frames[i])
+        plt.axis("off")
+        
+        vidx = 1
+        plt.subplot(2, len(frames), len(frames)+i+1)
+        I = IsMask[vidx]
+        idx = paths[vidx][frames[i], 1]
+        if idx >= I.shape[0]:
+            idx = I.shape[0]-1
+        F = np.reshape(I[idx, :], MaskDims[1])
+        plt.imshow(F, cmap = 'afmhot', interpolation = 'nearest')
+        plt.axis('off')
+        plt.title("Frame %i"%idx)
+    plt.savefig("WeiAlignedFeatures.svg", bbox_inches = 'tight')
 
 def partialAlignWalkingVideos(crossModal = True):
     IsMask = []
@@ -242,10 +296,11 @@ def runAlignmentExperiments(eng, K = 10, NPerVideo = 50):
         sio.savemat("WeizmannErrors%i.mat"%NPerVideo, AllErrors)
 
 if __name__ == '__main__':
-    eng = initMatlabEngine()
+    #eng = initMatlabEngine()
     initParallelAlgorithms()
+    plotAlignedWalkingVideos()
     #alignWalkingVideos(eng)
-    runAlignmentExperiments(eng, NPerVideo = 100)
+    #runAlignmentExperiments(eng, NPerVideo = 100)
     #partialAlignWalkingVideos(crossModal = True)
 
 if __name__ == '__main__2':
