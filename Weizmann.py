@@ -2,13 +2,13 @@ import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
 from SlidingWindowVideoTDA.VideoTools import *
-from AllTechniques import *
+from Alignment.AllTechniques import *
 from Alignment.AlignmentTools import *
 from Alignment.Alignments import *
 from Alignment.DTWGPU import *
-from CTWLib import *
+from Alignment.ctw.CTWLib import *
 
-WEIPATH = "ctw/data/wei/"
+WEIPATH = "Alignment/ctw/data/wei/"
 WEIVIDEOS = ["daria_walk", "denis_walk", "eli_walk", "ira_walk"]
 WEICROP = {'daria_walk':[10, 61], 'denis_walk':[8, 61], 'eli_walk':[3, 61], 'ido_walk':[0, 44], 'ira_walk':[0, 61]}
 

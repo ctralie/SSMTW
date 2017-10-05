@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
-import _SequenceAlignment as SAC
-from AlignmentTools import *
+import Alignment._SequenceAlignment as SAC
+from Alignment.AlignmentTools import *
 import time
 
 def Backtrace(backpointers, node, path):

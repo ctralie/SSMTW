@@ -1,1 +1,1 @@
-__all__ = ["Alignments", "AlignmentTools", "DTWGPU", "_SequenceAlignment"]
+__all__ = ["Alignments", "AlignmentTools", "DTWGPU", "SyntheticCurves", "_SequenceAlignment"]

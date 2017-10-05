@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from Alignment.AlignmentTools import *
 from Alignment.Alignments import *
 from Alignment.DTWGPU import *
-from CTWLib import *
+from Alignment.ctw.CTWLib import *
 import time
 
 def getIBDTWAlignment(X1, X2, useGPU = True, normFn = get2DRankSSM, Verbose = False, doPlot = False):
@@ -72,7 +72,7 @@ def doAllAlignments(eng, X1, X2, t2, doPCA = 1, useGPU = True, drawPaths = False
     (PIBDTW, PIBDTWN) = getIBDTWAlignment(X1, X2, useGPU = useGPU)
     timeIBDTW = time.time() - tic
     tic = time.time()
-    Ps = getCTWAlignments(eng, X1, X2, doPCA)
+    Ps = getCTWAlignments(eng, X1, X2, doPCA = doPCA)
     timeOthers = time.time() - tic
     print("IBDTW Time: %g, Others Time: %g"%(timeIBDTW, timeOthers))
     Ps['PIBDTW'] = PIBDTW

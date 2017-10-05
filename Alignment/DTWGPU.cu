@@ -1,9 +1,3 @@
-/*
-How much of a difference would it make if I stored the buffers in global memory?
-*/
-
-//__global__ void DTW(float* CSM, float* D, float* U, float* L, float* UL, int M, int N, int diagLen, int diagLenPow2, float* res) {
-
 __global__ void DTW(float* CSM, int M, int N, int ci, int cj, int diagLen, int diagLenPow2, float* res) {
     //Have circularly rotating system of 3 buffers
     extern __shared__ float x[]; //Circular buffer

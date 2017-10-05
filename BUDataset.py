@@ -6,7 +6,7 @@ from Geom3D.PolyMesh import *
 from SlidingWindowVideoTDA.VideoTools import *
 from Alignment.AlignmentTools import *
 from Alignment.DTWGPU import *
-from AllTechniques import *
+from Alignment.AllTechniques import *
 import subprocess
 import glob
 import time

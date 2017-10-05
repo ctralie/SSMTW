@@ -114,7 +114,7 @@ def make2JigsawPieces(P, tL, tR, t, doPlot = False):
 
 
 if __name__ == '__main__':
-    from SyntheticCurves import applyRandomRigidTransformation
+    from Alignment.SyntheticCurves import applyRandomRigidTransformation
     from Alignment.AlignmentTools import getSSM, projectPath, getProjectedPathParam
     from Alignment.DTWGPU import initParallelAlgorithms, doIBSMWatGPU
     from Alignment.Alignments import SMWat

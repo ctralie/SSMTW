@@ -4,7 +4,7 @@ Make some extra figures for the paper
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
-from SyntheticCurves import *
+from Alignment.SyntheticCurves import *
 from Alignment.Alignments import *
 from Alignment.AlignmentTools import *
 from Alignment.DTWGPU import *
@@ -409,10 +409,10 @@ def BUResults():
     plt.savefig("BUResults.svg", bbox_inches = 'tight')
 
 if __name__ == '__main__':
-    #ConceptFigure()
-    #IBDTWExample()
-    #Figure8Reparam()
-    #Figure8Normalization()
-    #SyntheticResults()
-    #WeizmannResults()
+    ConceptFigure()
+    IBDTWExample()
+    Figure8Reparam()
+    Figure8Normalization()
+    SyntheticResults()
+    WeizmannResults()
     BUResults()

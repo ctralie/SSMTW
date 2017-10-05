@@ -1,9 +1,21 @@
+"""
+Code that wraps around Matlab to execute Feng Zhou's CTW/GTW code
+http://www.f-zhou.com/ta_code.html
+"""
 import numpy as np
 import scipy.io as sio
 import subprocess
 import matplotlib.pyplot as plt
 import os
-import matlab.engine
+import sys
+import inspect
+
+def getPrefix():
+    s = ''
+    if 'Alignment.ctw' in sys.modules:
+        #raise Exception('Must import Alignment.ctw before running Matlab code')
+        s = "%s/"%os.path.dirname(inspect.getfile(sys.modules['Alignment.ctw']))
+    return s
 
 def getCTWAlignments(eng, X1, X2, doPCA = 1):
     """
@@ -12,13 +24,15 @@ def getCTWAlignments(eng, X1, X2, doPCA = 1):
     :param eng: Matlab engine
     :param X1: N x d Euclidean vector
     :param X2: M x d Euclidean vector
+    :param prefix: Relative path to help locate Matlab files
     :returns: dictionary of warping results
     """
-    sio.savemat("ctw/Xs.mat", {"X1":X1, "X2":X2, "doPCA":doPCA})
+    prefix = getPrefix()
+    sio.savemat("%sXs.mat"%prefix, {"X1":X1, "X2":X2, "doPCA":doPCA})
     eng.extractAlignments(nargout=0)
-    res = sio.loadmat("ctw/matlabResults.mat")
-    os.remove("ctw/Xs.mat")
-    os.remove("ctw/matlabResults.mat")
+    res = sio.loadmat("%smatlabResults.mat"%prefix)
+    os.remove("%sXs.mat"%prefix)
+    os.remove("%smatlabResults.mat"%prefix)
     toRemove = []
     for k in res.keys():
         if not k[0] == 'P':
@@ -30,9 +44,13 @@ def getCTWAlignments(eng, X1, X2, doPCA = 1):
     return res
 
 def initMatlabEngine():
-    os.chdir('ctw')
+    prefix = getPrefix()
+    import matlab.engine
+    beforePath = os.path.realpath(".")
+    if len(prefix) > 0:
+        os.chdir('%s'%prefix)
     eng = matlab.engine.start_matlab()
-    os.chdir('..')
+    os.chdir(beforePath)
     return eng
 
 def testCTWAlignments(eng):
