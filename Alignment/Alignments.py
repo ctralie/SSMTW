@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import scipy.io as sio
 import Alignment._SequenceAlignment as SAC
 from Alignment.AlignmentTools import *
+from multiprocessing import Pool as PPool
 import time
 
 def Backtrace(backpointers, node, path):
@@ -158,25 +159,38 @@ def drawPointers(fout, backpointers, M, N):
             else: #Diagonal Arrow
                 fout.write("\\draw [thick, ->, %s] (%g, %g) -- (%g, %g);\n"%(color, s[0], s[1], P[1]+1.6, M-P[0]+0.2))
 
-def doIBDTW(SSMA, SSMB):
+def doIBDTWHelper(args):
+    (row, SSMB, i, j) = args
+    col = SSMB[:, j]
+    CSM = row[:, None] - col[None, :]
+    CSM = np.abs(CSM)
+    return SAC.DTWConstrained(CSM, i, j)
+
+def doIBDTW(SSMA, SSMB, NThreads = 8):
     """
     Do partial isometry blind dynamic time warping between two
     self-similarity matrices
     :param SSMA: MXM self-similarity matrix
     :param SSMB: NxN self-similarity matrix
+    :param NThreads: How many threads to use in parallelization of
+        row computation of CSWM
     :returns D: MxN cross-similarity matrix
     """
     M = SSMA.shape[0]
     N = SSMB.shape[0]
     D = np.zeros((M, N))
+    parpool = None
+    if NThreads > 1:
+        parpool = PPool(NThreads)
     for i in range(M):
+        row = SSMA[i, :]
+        if parpool:
+            args = zip([row]*N, [SSMB]*N, [i]*N, range(N))
+            D[i, :] = parpool.map(doIBDTWHelper, args)
+        else:
+            for j in range(N):
+                D[i, j] = doIBDTWHelper((row, SSMB, i, j))
         print("Finished row %i of %i"%(i, M))
-        for j in range(N):
-            row = SSMA[i, :]
-            col = SSMB[:, j]
-            CSM = row[:, None] - col[None, :]
-            CSM = np.abs(CSM)
-            D[i, j] = SAC.DTWConstrained(CSM, i, j)
     return D
 
 def SMWat(CSM, matchFunction, hvPenalty = -0.2, backtrace = False, backidx = [], animate = False):
