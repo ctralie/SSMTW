@@ -166,7 +166,7 @@ def doIBDTWHelper(args):
     CSM = np.abs(CSM)
     return SAC.DTWConstrained(CSM, i, j)
 
-def doIBDTW(SSMA, SSMB, NThreads = 8):
+def doIBDTW(SSMA, SSMB, NThreads = 8, Verbose = False):
     """
     Do partial isometry blind dynamic time warping between two
     self-similarity matrices
@@ -174,6 +174,7 @@ def doIBDTW(SSMA, SSMB, NThreads = 8):
     :param SSMB: NxN self-similarity matrix
     :param NThreads: How many threads to use in parallelization of
         row computation of CSWM
+    :param Verbose: Whether or not to print which row is being aligned
     :returns D: MxN cross-similarity matrix
     """
     M = SSMA.shape[0]
@@ -190,7 +191,8 @@ def doIBDTW(SSMA, SSMB, NThreads = 8):
         else:
             for j in range(N):
                 D[i, j] = doIBDTWHelper((row, SSMB, i, j))
-        print("Finished row %i of %i"%(i, M))
+        if Verbose:
+            print("Finished row %i of %i"%(i, M))
     return D
 
 def SMWat(CSM, matchFunction, hvPenalty = -0.2, backtrace = False, backidx = [], animate = False):
@@ -261,12 +263,13 @@ def SMWat(CSM, matchFunction, hvPenalty = -0.2, backtrace = False, backidx = [],
 
     return res
 
-def doIBSMWat(SSMA, SSMB, matchfn, hvPenalty = -0.3):
+def doIBSMWat(SSMA, SSMB, matchfn, hvPenalty = -0.3, Verbose = False):
     M = SSMA.shape[0]
     N = SSMB.shape[0]
     D = np.zeros((M, N))
     for i in range(M):
-        print("Finished row %i of %i"%(i, M))
+        if Verbose:
+            print("Finished row %i of %i"%(i, M))
         for j in range(N):
             row = SSMA[i, :]
             col = SSMB[:, j]
