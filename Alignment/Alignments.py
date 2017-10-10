@@ -3,8 +3,11 @@ import matplotlib.pyplot as plt
 import scipy.io as sio
 import Alignment._SequenceAlignment as SAC
 from Alignment.AlignmentTools import *
+import Alignment
 from multiprocessing import Pool as PPool
 import time
+
+Alignment.parpool = None
 
 def Backtrace(backpointers, node, path):
     optimal = False
@@ -182,12 +185,13 @@ def doIBDTW(SSMA, SSMB, NThreads = 8, Verbose = False):
     D = np.zeros((M, N))
     parpool = None
     if NThreads > 1:
-        parpool = PPool(NThreads)
+        if not Alignment.parpool:
+            Alignment.parpool = PPool(NThreads)
     for i in range(M):
         row = SSMA[i, :]
-        if parpool:
+        if NThreads > 1:
             args = zip([row]*N, [SSMB]*N, [i]*N, range(N))
-            D[i, :] = parpool.map(doIBDTWHelper, args)
+            D[i, :] = Alignment.parpool.map(doIBDTWHelper, args)
         else:
             for j in range(N):
                 D[i, j] = doIBDTWHelper((row, SSMB, i, j))
