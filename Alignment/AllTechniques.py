@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from Alignment.AlignmentTools import *
 from Alignment.Alignments import *
-from Alignment.DTWGPU import *
 from Alignment.ctw.CTWLib import *
 import time
 
@@ -16,6 +15,7 @@ def getIBDTWAlignment(X1, X2, useGPU = True, normFn = get2DRankSSM, Verbose = Fa
     SSM1Norm = np.array(normFn(SSM1), dtype = np.float32)
     SSM2Norm = np.array(normFn(SSM2), dtype = np.float32)
     if useGPU:
+        from Alignment.DTWGPU import doIBDTWGPU
         D = doIBDTWGPU(SSM1, SSM2, returnCSM = True)
         DNorm = doIBDTWGPU(SSM1Norm, SSM2Norm, returnCSM = True)
     else:
