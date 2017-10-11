@@ -299,7 +299,7 @@ def Figure8Reparam():
 
     plt.savefig("Figure8Reparam.svg", bbox_inches = 'tight')
 
-def Figure8Normalization():
+def Figure8RankNormalization():
     plt.figure(figsize=(11.5, 10))
     initParallelAlgorithms()
     N = 200
@@ -328,19 +328,19 @@ def Figure8Normalization():
     plt.imshow(D1, cmap = 'afmhot', interpolation = 'nearest')
     plt.title("Original SSM")
     makeColorbar(2, 2, 1)
-    
+
     plt.subplot(222)
     plt.imshow(D1Norm, cmap = 'afmhot', interpolation = 'nearest')
     plt.title("Normalized SSM")
     makeColorbar(2, 2, 2)
-    
+
     plt.subplot(223)
     plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
     plt.scatter(path[:, 1], path[:, 0], 5, 'c', edgecolor = 'none')
     plt.xlim([0, N])
     plt.ylim([N, 0])
     plt.title("CSWM Original")
-    
+
     plt.subplot(224)
     plt.imshow(CSWMNorm, cmap = 'afmhot', interpolation = 'nearest')
     plt.scatter(pathNorm[:, 1], pathNorm[:, 0], 5, 'c', edgecolor = 'none')
@@ -349,6 +349,56 @@ def Figure8Normalization():
     plt.title("CSWM Norm")
 
     plt.savefig("2DRankNorm.svg", bbox_inches = 'tight')
+
+def Figure8InterpNormalization(L = 100):
+    plt.figure(figsize=(11.5, 10))
+    initParallelAlgorithms()
+    N = 200
+    t = np.linspace(0, 1, N)
+    ut = t**2
+    X1 = np.zeros((N, 2))
+    X1[:, 0] = np.cos(2*np.pi*t)
+    X1[:, 1] = np.sin(4*np.pi*t)
+
+    X2 = np.zeros((N, 2))
+    X2[:, 0] = np.cos(2*np.pi*ut)
+    X2[:, 1] = np.sin(4*np.pi*ut)
+
+    D1 = getCSM(X1, X1)
+    D2 = getCSM(X2, X2)
+    (D1Norm, D2Norm) = matchSSMDist(D1, D2, L)
+
+    CSWM = doIBDTWGPU(D1, D2, True, True)
+    (DAll, CSM, backpointers, path) = DTWCSM(CSWM)
+
+    CSWMNorm = doIBDTWGPU(D1Norm, D2Norm, True, True)
+    (DAll, CSM, backpointers, pathNorm) = DTWCSM(CSWMNorm)
+
+    plt.subplot(221)
+    plt.imshow(D1, cmap = 'afmhot', interpolation = 'nearest')
+    plt.title("Original SSM")
+    makeColorbar(2, 2, 1)
+
+    plt.subplot(222)
+    plt.imshow(D1Norm, cmap = 'afmhot', interpolation = 'nearest')
+    plt.title("Normalized SSM")
+    makeColorbar(2, 2, 2)
+
+    plt.subplot(223)
+    plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
+    plt.scatter(path[:, 1], path[:, 0], 5, 'c', edgecolor = 'none')
+    plt.xlim([0, N])
+    plt.ylim([N, 0])
+    plt.title("CSWM Original")
+
+    plt.subplot(224)
+    plt.imshow(CSWMNorm, cmap = 'afmhot', interpolation = 'nearest')
+    plt.scatter(pathNorm[:, 1], pathNorm[:, 0], 5, 'c', edgecolor = 'none')
+    plt.xlim([0, N])
+    plt.ylim([N, 0])
+    plt.title("CSWM Norm")
+
+    plt.savefig("2DInterpNorm%i.svg"%L, bbox_inches = 'tight')
 
 def SyntheticResults():
     Curves = ['VivianiFigure8', 'TSCubic', 'TorusKnot23', 'TorusKnot35', 'PinchedCircle', 'Lissajous32', 'Lissajous54', 'ConeHelix', 'Epicycloid1_3']
@@ -409,10 +459,11 @@ def BUResults():
     plt.savefig("BUResults.svg", bbox_inches = 'tight')
 
 if __name__ == '__main__':
-    ConceptFigure()
-    IBDTWExample()
-    Figure8Reparam()
-    Figure8Normalization()
-    SyntheticResults()
-    WeizmannResults()
-    BUResults()
+    #ConceptFigure()
+    #IBDTWExample()
+    #Figure8Reparam()
+    #Figure8Normalization()
+    Figure8InterpNormalization(300)
+    #SyntheticResults()
+    #WeizmannResults()
+    #BUResults()

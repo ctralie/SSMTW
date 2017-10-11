@@ -42,6 +42,9 @@ def CSMToBinaryMutual(D, Kappa):
     return B1*B2
 
 def getSSM(X):
+    """
+    Return the SSM between all rows of a time-ordered Euclidean point cloud X
+    """
     return getCSM(X, X)
 
 def getRankSSM(SSM):
@@ -52,6 +55,10 @@ def getRankSSM(SSM):
     return SSMD
 
 def get2DRankSSM(SSM):
+    """
+    Return the SSM so that distances are normalized to [0, 1] by their rank;
+    i.e. a pixel of rank k in an NxN distance matrix has value k/N*N
+    """
     N = SSM.shape[0]
     [I, J] = np.meshgrid(np.arange(N), np.arange(N))
     d = SSM[I < J]
@@ -63,12 +70,58 @@ def get2DRankSSM(SSM):
     return D
 
 def get1DZNormSSM(SSM):
+    """
+    Return the SSM normalized row by row by the standard deviation of
+    that row
+    """
     std = np.std(SSM, 1)
     return SSM/std[:, None]
 
 def get2DZNormSSM(SSM):
+    """
+    Return the SSM normalized by the standard deviation over all pixels
+    """
     std = np.std(SSM.flatten())
     return SSM/std
+
+def getIntHist(D, L):
+    """
+    Helper function for matchSSMDist that returns a histogram of
+    the integers in the range [0, L-1]
+    :param D: Integer discretized distance matrix taking values in [0, L-1]
+    :param L: The number of levels
+    :return: The normalized probability mass function
+    """
+    counts = np.unique(D.flatten(), return_counts = True)
+    p = np.zeros(L)
+    p[counts[0].astype(np.int64)] = counts[1]
+    p /= np.sum(p)
+    return p
+
+def matchSSMDist(A, B, L = 100):
+    """
+    Normalize the distance matrices A and B to the range [0, 1],
+    discretize the levels to L bins in that range, and then
+    remap the levels in A to the levels in B so that the distribution
+    of A matches the distribution of B (ref. Gonzalez&Woods 3.3)
+    with help from https://stackoverflow.com/questions/32655686/
+    :param A: An MxM distance matrix
+    :param B: An NxN distance matrix
+    :param L: Number of discretization levels
+    """
+    #Discretize to the range [0, L-1]
+    AFlat = np.round((L-1)*A.flatten()/np.max(A))
+    BFlat = np.round((L-1)*B.flatten()/np.max(B))
+    #Compute normalized CDFs
+    valsA, idxA, countsA = np.unique(AFlat, return_inverse = True, return_counts = True)
+    PA = np.cumsum(countsA).astype(np.float64)
+    PA /= PA[-1]
+    valsB, countsB = np.unique(BFlat, return_counts = True)
+    PB = np.cumsum(countsB).astype(np.float64)
+    PB /= PB[-1]
+    valsInterp = np.interp(PA, PB, valsB)
+    return (valsInterp[idxA].reshape(A.shape), BFlat.reshape(B.shape))
+
 
 ###################################################
 #                Warping Paths                    #
