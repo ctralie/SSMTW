@@ -120,7 +120,7 @@ def matchSSMDist(A, B, L = 100):
     PB = np.cumsum(countsB).astype(np.float64)
     PB /= PB[-1]
     valsInterp = np.interp(PA, PB, valsB)
-    return (valsInterp[idxA].reshape(A.shape), BFlat.reshape(B.shape))
+    return (valsInterp[idxA].reshape(A.shape)/L, BFlat.reshape(B.shape)/L)
 
 
 ###################################################

@@ -168,27 +168,27 @@ def IBDTWExample(compareCPU = False):
     pathProj13 = projectPath(path13, M, N)
     res13 = getProjectedPathParam(pathProj13)
 
-    plt.figure(figsize=(10, 15))
-    plt.subplot(321)
+    plt.figure(figsize=(12, 8))
+    plt.subplot(231)
     plt.imshow(SSM1, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
     plt.axis('off')
     plt.title('SSM 1')
-    plt.subplot(323)
+    plt.subplot(232)
     plt.imshow(SSM2, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
     plt.axis('off')
     plt.title('SSM 2')
-    plt.subplot(325)
+    plt.subplot(233)
     plt.imshow(SSM3, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
     plt.axis('off')
     plt.title('SSM 3')
 
-    plt.subplot(322)
+    plt.subplot(234)
     plt.scatter(X1[:, 0], X1[:, 1], 10, c=res12['C1'], edgecolor='none')
-    plt.text(np.mean(X1, 0)[0]-1.5, np.mean(X1, 0)[1]-0.3, '1', color='w', fontsize=36)
+    plt.text(np.mean(X1, 0)[0]-1.7, np.mean(X1, 0)[1]-0.5, '1', color='w', fontsize=36)
     plt.scatter(X2[:, 0], X2[:, 1], 10, c=res12['C2'], edgecolor='none')
-    plt.text(np.mean(X2, 0)[0]-0.2, np.mean(X2, 0)[1]-0.3, '2', color='w', fontsize=36)
+    plt.text(np.mean(X2, 0)[0]-0.4, np.mean(X2, 0)[1]-0.4, '2', color='w', fontsize=36)
     plt.scatter(X3[:, 0], X3[:, 1], 10, c=res13['C2'], edgecolor='none')
-    plt.text(np.mean(X3, 0)[0]-0.3, np.mean(X3, 0)[1], '3', color='w', fontsize=36)
+    plt.text(np.mean(X3, 0)[0]-0.6, np.mean(X3, 0)[1]-0.3, '3', color='w', fontsize=36)
     plt.axis('equal')
     plotbgcolor = (0.15, 0.15, 0.15)
     ax = plt.gca()
@@ -200,7 +200,7 @@ def IBDTWExample(compareCPU = False):
     plt.axis('equal')
     plt.title("TOPCs")
 
-    plt.subplot(324)
+    plt.subplot(235)
     plt.imshow(CSWM12, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
     plt.hold(True)
     plt.scatter(path12[:, 1], path12[:, 0], 5, 'c', edgecolor = 'none')
@@ -213,7 +213,7 @@ def IBDTWExample(compareCPU = False):
     ax.get_yaxis().set_ticks([])
     plt.title("CSWM 1 to 2, Cost = %.3g"%CSM12[-1, -1])
 
-    plt.subplot(326)
+    plt.subplot(236)
     plt.imshow(CSWM13, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
     plt.hold(True)
     plt.scatter(path13[:, 1], path13[:, 0], 5, 'c', edgecolor = 'none')
@@ -400,6 +400,112 @@ def Figure8InterpNormalization(L = 100):
 
     plt.savefig("2DInterpNorm%i.svg"%L, bbox_inches = 'tight')
 
+def EulerianInterp(L = 100):
+    A = 100
+    B = 60
+    T = 50
+    NPeriods = 4
+    phi = 0
+    N = T*NPeriods
+
+    #Which row from which to extract a 1D profile
+    Row = 50
+    NCols = T + T/2
+    colors = [[0.0, 0.5, 0.0], [0.0, 0.5, 1.0], [0.7, 0.0, 0.7], [0.5, 0.5, 0.5]]
+    ssmcmap = 'afmhot'
+
+    X = np.zeros((N, A+B))
+    Is = np.arange(X.shape[1])
+    ts = np.linspace(0, N + np.pi/3, N)
+    ts = ts[0:N]
+    thetas = 2*np.pi/T*ts + phi
+    fs = (A/2)*np.cos(thetas)
+    for t in range(N):
+        X[t, :] = np.abs(fs[t] - Is + A/2 + B/2) < B/2
+
+    D1 = getSSM(fs[:, None])
+    D2 = getSSM(X)
+
+    (D2N, D1N) = matchSSMDist(D2, D1, L)
+    (D1N2, D2N2) = matchSSMDist(D1, D2, L)
+
+    plt.figure(figsize=(30, 9))
+    plt.subplot(251)
+    plt.plot(fs)
+    plt.xlabel("Time")
+    plt.ylabel("Position")
+    plt.title("Lagrangian Coordinates")
+    plt.subplot(252)
+    plt.title("Lagrangian SSM Original")
+    plt.imshow(D1, cmap = ssmcmap, interpolation = 'nearest')
+    plt.xlabel("Time")
+    plt.ylabel("Time")
+    makeColorbar(2, 5, 2)
+
+    plt.subplot(253)
+    plt.title("Lagrangian SSM Discretized")
+    plt.scatter(np.arange(NCols), Row*np.ones(NCols), 20, colors[0], edgecolor = 'none')
+    plt.imshow(D1N, cmap = ssmcmap, interpolation = 'nearest')
+    plt.xlabel("Time")
+    plt.ylabel("Time")
+    makeColorbar(2, 5, 3)
+
+    plt.subplot(254)
+    plt.title("Lagrangian SSM To Eulerian")
+    plt.scatter(np.arange(NCols), Row*np.ones(NCols), 20, colors[1], edgecolor = 'none')
+    plt.imshow(D1N2, cmap = ssmcmap, interpolation = 'nearest')
+    plt.xlabel("Time")
+    plt.ylabel("Time")
+    makeColorbar(2, 5, 4)
+
+
+    plt.subplot(256)
+    plt.imshow(1-X, cmap = 'gray', interpolation = 'nearest')
+    plt.xlabel("Pixels")
+    plt.ylabel("Time")
+    plt.title("Eulerian Coordinates")
+    plt.subplot(257)
+    plt.imshow(D2, cmap = ssmcmap, interpolation = 'nearest')
+    plt.title("Eulerian SSM Original")
+    plt.xlabel("Time")
+    plt.ylabel("Time")
+    makeColorbar(2, 5, 7)
+
+    plt.subplot(258)
+    plt.scatter(np.arange(NCols), Row*np.ones(NCols), 20, colors[2], edgecolor = 'none')
+    plt.imshow(D2N, cmap = ssmcmap, interpolation = 'nearest')
+    plt.title("Eulerian SSM To Lagrangian")
+    plt.xlabel("Time")
+    plt.ylabel("Time")
+    makeColorbar(2, 5, 8)
+    plt.subplot(259)
+    plt.scatter(np.arange(NCols), Row*np.ones(NCols), 20, colors[3], edgecolor = 'none')
+    plt.imshow(D2N2, cmap = ssmcmap, interpolation = 'nearest')
+    plt.title("Eulerian SSM Discretized")
+    plt.xlabel("Time")
+    plt.ylabel("Time")
+    makeColorbar(2, 5, 9)
+
+    plt.subplot(2, 5, 5)
+    plt.plot(D1N[Row, 0:NCols], c=colors[0], lineWidth=4, linestyle='--')
+    plt.plot(D2N[Row, 0:NCols], c = colors[2], lineWidth=2)
+    plt.plot(D2N2[Row, 0:NCols], c=colors[3], lineWidth=4, linestyle=':')
+    plt.ylim([-0.2, 1.2])
+    plt.xlabel("Time")
+    plt.ylabel("Row %i SSM Value"%Row)
+    plt.title("Eulerian To Lagrangian")
+
+    plt.subplot(2, 5, 10)
+    plt.plot(D1N[Row, 0:NCols], c=colors[0], lineWidth=4, linestyle=':')
+    plt.plot(D2N2[Row, 0:NCols], c=colors[3], lineWidth=4, linestyle='--')
+    plt.plot(D1N2[Row, 0:NCols], c = colors[1], lineWidth=2)
+    plt.ylim([-0.2, 1.2])
+    plt.xlabel("Time")
+    plt.ylabel("Row %i SSM Value"%Row)
+    plt.title("Lagrangian To Eulerian")
+
+    plt.savefig("EulerianInterp.svg", bbox_inches = 'tight')
+
 def SyntheticResults():
     Curves = ['VivianiFigure8', 'TSCubic', 'TorusKnot23', 'TorusKnot35', 'PinchedCircle', 'Lissajous32', 'Lissajous54', 'ConeHelix', 'Epicycloid1_3']
     Curves3D = ['VivianiFigure8', 'TorusKnot23', 'TorusKnot35','ConeHelix']
@@ -460,10 +566,11 @@ def BUResults():
 
 if __name__ == '__main__':
     #ConceptFigure()
-    #IBDTWExample()
+    IBDTWExample()
     #Figure8Reparam()
     #Figure8Normalization()
-    Figure8InterpNormalization(300)
+    #Figure8InterpNormalization(100)
+    #EulerianInterp(100)
     #SyntheticResults()
     #WeizmannResults()
     #BUResults()
