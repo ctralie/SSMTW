@@ -404,7 +404,7 @@ def EulerianInterp(L = 100):
     A = 100
     B = 60
     T = 50
-    NPeriods = 4
+    NPeriods = 3
     phi = 0
     N = T*NPeriods
 
@@ -429,7 +429,7 @@ def EulerianInterp(L = 100):
     (D2N, D1N) = matchSSMDist(D2, D1, L)
     (D1N2, D2N2) = matchSSMDist(D1, D2, L)
 
-    plt.figure(figsize=(30, 9))
+    plt.figure(figsize=(22, 8))
     plt.subplot(251)
     plt.plot(fs)
     plt.xlabel("Time")
@@ -438,24 +438,23 @@ def EulerianInterp(L = 100):
     plt.subplot(252)
     plt.title("Lagrangian SSM Original")
     plt.imshow(D1, cmap = ssmcmap, interpolation = 'nearest')
-    plt.xlabel("Time")
     plt.ylabel("Time")
+    ax = plt.gca()
+    ax.set_xticks([])
     makeColorbar(2, 5, 2)
 
     plt.subplot(253)
     plt.title("Lagrangian SSM Discretized")
     plt.scatter(np.arange(NCols), Row*np.ones(NCols), 20, colors[0], edgecolor = 'none')
     plt.imshow(D1N, cmap = ssmcmap, interpolation = 'nearest')
-    plt.xlabel("Time")
-    plt.ylabel("Time")
+    plt.axis('off')
     makeColorbar(2, 5, 3)
 
     plt.subplot(254)
     plt.title("Lagrangian SSM To Eulerian")
     plt.scatter(np.arange(NCols), Row*np.ones(NCols), 20, colors[1], edgecolor = 'none')
     plt.imshow(D1N2, cmap = ssmcmap, interpolation = 'nearest')
-    plt.xlabel("Time")
-    plt.ylabel("Time")
+    plt.axis('off')
     makeColorbar(2, 5, 4)
 
 
@@ -476,32 +475,37 @@ def EulerianInterp(L = 100):
     plt.imshow(D2N, cmap = ssmcmap, interpolation = 'nearest')
     plt.title("Eulerian SSM To Lagrangian")
     plt.xlabel("Time")
-    plt.ylabel("Time")
+    ax = plt.gca()
+    ax.set_yticks([])
     makeColorbar(2, 5, 8)
     plt.subplot(259)
     plt.scatter(np.arange(NCols), Row*np.ones(NCols), 20, colors[3], edgecolor = 'none')
     plt.imshow(D2N2, cmap = ssmcmap, interpolation = 'nearest')
     plt.title("Eulerian SSM Discretized")
     plt.xlabel("Time")
-    plt.ylabel("Time")
+    ax = plt.gca()
+    ax.set_yticks([])
     makeColorbar(2, 5, 9)
 
     plt.subplot(2, 5, 5)
     plt.plot(D1N[Row, 0:NCols], c=colors[0], lineWidth=4, linestyle='--')
     plt.plot(D2N[Row, 0:NCols], c = colors[2], lineWidth=2)
     plt.plot(D2N2[Row, 0:NCols], c=colors[3], lineWidth=4, linestyle=':')
-    plt.ylim([-0.2, 1.2])
-    plt.xlabel("Time")
-    plt.ylabel("Row %i SSM Value"%Row)
+    plt.ylim([-0.1, 1.1])
+    #plt.ylabel("Row %i SSM Value"%Row)
+    ax = plt.gca()
+    ax.yaxis.tick_right()
     plt.title("Eulerian To Lagrangian")
 
     plt.subplot(2, 5, 10)
     plt.plot(D1N[Row, 0:NCols], c=colors[0], lineWidth=4, linestyle=':')
     plt.plot(D2N2[Row, 0:NCols], c=colors[3], lineWidth=4, linestyle='--')
     plt.plot(D1N2[Row, 0:NCols], c = colors[1], lineWidth=2)
-    plt.ylim([-0.2, 1.2])
+    plt.ylim([-0.1, 1.1])
     plt.xlabel("Time")
-    plt.ylabel("Row %i SSM Value"%Row)
+    #plt.ylabel("Row %i SSM Value"%Row)
+    ax = plt.gca()
+    ax.yaxis.tick_right()
     plt.title("Lagrangian To Eulerian")
 
     plt.savefig("EulerianInterp.svg", bbox_inches = 'tight')
@@ -556,9 +560,10 @@ def BUResults():
     X = np.zeros((N, len(Types)))
     for i in range(len(Types)):
         X[:, i] = AllErrors["P%s"%Types[i]].flatten()
-
-    plt.figure(figsize=(6, 4))
+    
+    plt.figure(figsize=(6, 3))
     plt.boxplot(X, labels = Types)
+    plt.ylim([0, 0.4])
     plt.xlabel("Alignment Algorithm")
     plt.ylabel("Alignment Error")
     plt.title("BU4D Face 2D Video To 3D Video")
@@ -566,11 +571,11 @@ def BUResults():
 
 if __name__ == '__main__':
     #ConceptFigure()
-    IBDTWExample()
+    #IBDTWExample()
     #Figure8Reparam()
     #Figure8Normalization()
     #Figure8InterpNormalization(100)
     #EulerianInterp(100)
     #SyntheticResults()
     #WeizmannResults()
-    #BUResults()
+    BUResults()

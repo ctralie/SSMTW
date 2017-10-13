@@ -7,6 +7,7 @@ from Alignment.AlignmentTools import *
 from Alignment.Alignments import *
 from Alignment.DTWGPU import *
 from Alignment.ctw.CTWLib import *
+from PaperFigures import makeColorbar
 
 WEIPATH = "Alignment/ctw/data/wei/"
 WEIVIDEOS = ["daria_walk", "denis_walk", "eli_walk", "ira_walk"]
@@ -66,45 +67,118 @@ def getEDT(I, IDims, doBorderDistance = False, doPlot = False, doFlip = False):
         X[i, :] = F2.flatten()
     return X
 
-def alignWalkingVideos(eng):
+def alignWalkingVideos(eng, L = 200):
     IsMask = []
     Is = []
+    Xs = []
     SSMs = []
     paths = [[]]
     counter = 1
-    plt.figure(figsize=(5*len(WEIVIDEOS), 10))
+    f1 = plt.figure(figsize=(5*len(WEIVIDEOS), 10))
+    f2 = plt.figure(figsize=(14, 12))
     for video in WEIVIDEOS:
         (I, IDims) = getWeiAlignedMask(video)
-        IsMask.append(1.0*I)
         if counter > 1:
             I = getEDT(I, IDims)
+        I = 1.0*I
+        IsMask.append((I, IDims))
         D = getSSM(I)
-        D = get2DRankSSM(D)
         SSMs.append(D)
+        plt.figure(f1.number)
         plt.subplot(2, len(WEIVIDEOS), counter)
         plt.imshow(SSMs[-1], cmap = 'afmhot', interpolation = 'nearest')
         plt.title(video)
 
         if counter > 1:
-            D = doIBDTW(SSMs[0], SSMs[-1])
-            (DAll, CSM, backpointers, pathIBDTW) = DTWCSM(D)
+            v1str = WEIVIDEOS[0][0:-5]
+            v1str = v1str[0].capitalize() + v1str[1::]
+            v2str = WEIVIDEOS[counter-1][0:-5]
+            v2str = v2str[0].capitalize() + v2str[1::]
+            [D1, D2] = [SSMs[0], SSMs[-1]]
+            (D1N1, D2N1) = matchSSMDist(D1, D2, L)
+            (D2N2, D1N2) = matchSSMDist(D2, D1, L)
+            CSWM = doIBDTW(D1, D2)
+            CSWM1 = doIBDTW(D1N1, D2N1)
+            CSWM2 = doIBDTW(D1N2, D2N2)
+            (DAll, CSSM, backpointers, path) = DTWCSM(CSWM)
+            (DAll, CSSM1, backpointers, path1) = DTWCSM(CSWM1)
+            (DAll, CSSM2, backpointers, path2) = DTWCSM(CSWM2)
+            pathIBDTW = path1 #Best path
+            if D2[-1, -1] < D1[-1, -1]:
+                pathIBDTW = path2
             plt.subplot(2, len(WEIVIDEOS), len(WEIVIDEOS) + counter)
-            plt.imshow(D, cmap = 'afmhot', interpolation = 'nearest')
+            plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
             plt.plot(pathIBDTW[:, 1], pathIBDTW[:, 0], '.')
             #paths.append(projectPath(path, D.shape[0], D.shape[1], 1))
-            res = getCTWAlignments(eng, IsMask[0], IsMask[-1])
+            res = getCTWAlignments(eng, IsMask[0][0], IsMask[-1][0])
             for ptype in res:
                 path = res[ptype]
                 plt.plot(path[:, 1], path[:, 0], '.')
             plt.legend(['IBDTW'] + res.keys())
-            paths.append(projectPath(pathIBDTW, D.shape[0], D.shape[1], 1))
+            paths.append(projectPath(pathIBDTW, CSWM.shape[0], CSWM.shape[1], 1))
+
+            #Plot the different normalized SSMs
+            plt.figure(f2.number)
+            plt.clf()
+            plt.subplot(331)
+            plt.imshow(D1, cmap = 'afmhot', interpolation = 'nearest')
+            plt.title("SSM %s Mask"%v1str)
+            plt.ylabel("Frame Number")
+            makeColorbar(3, 3, 1)
+            plt.subplot(334)
+            plt.imshow(D2, cmap = 'afmhot', interpolation = 'nearest')
+            plt.title("SSM %s EDT"%v2str)
+            plt.ylabel("Frame Number")
+            makeColorbar(3, 3, 4)
+            plt.subplot(337)
+            plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
+            plt.scatter(path[:, 1], path[:, 0], 10, 'r', edgecolor = 'none')
+            plt.xlim([0, CSWM.shape[1]])
+            plt.ylim([CSWM.shape[0], 0])
+            plt.xlabel("%s Frame Number"%v2str)
+            plt.ylabel("%s Frame Number"%v1str)
+            plt.title("CSWM, Score = %.3g"%CSSM[-1, -1])
+
+            plt.subplot(332)
+            plt.imshow(D1N1, cmap = 'afmhot', interpolation = 'nearest')
+            plt.title("SSM %s Mask Remapped"%v1str)
+            makeColorbar(3, 3, 2)
+            plt.subplot(335)
+            plt.imshow(D2N1, cmap = 'afmhot', interpolation = 'nearest')
+            plt.title("SSM %s EDT Discretized"%v2str)
+            makeColorbar(3, 3, 5)
+            plt.subplot(338)
+            plt.imshow(np.log(CSWM1), cmap = 'afmhot', interpolation = 'nearest')
+            plt.scatter(path1[:, 1], path1[:, 0], 10, 'c', edgecolor = 'none')
+            plt.xlim([0, CSWM1.shape[1]])
+            plt.ylim([CSWM1.shape[0], 0])
+            plt.title("CSWM, Score = %.3g"%CSSM1[-1, -1])
+
+            plt.subplot(333)
+            plt.imshow(D1N2, cmap = 'afmhot', interpolation = 'nearest')
+            plt.title("SSM %s Mask Discretized"%v1str)
+            makeColorbar(3, 3, 3)
+            plt.subplot(336)
+            plt.imshow(D2N2, cmap = 'afmhot', interpolation = 'nearest')
+            plt.title("SSM %s EDT Remapped"%v2str)
+            makeColorbar(3, 3, 6)
+            plt.subplot(339)
+            plt.imshow(np.log(CSWM2), cmap = 'afmhot', interpolation = 'nearest')
+            plt.scatter(path2[:, 1], path2[:, 0], 10, 'm', edgecolor = 'none')
+            plt.xlim([0, CSWM2.shape[1]])
+            plt.ylim([CSWM2.shape[0], 0])
+            plt.title("CSWM, Score = %.3g"%CSSM2[-1, -1])
+
+            plt.savefig("WeizmannRankNorm%i.svg"%counter, bbox_inches = 'tight')
         counter += 1
         (I, IDims) = loadImageIOVideo("%s/walk/%s.avi"%(WEIPATH, video))
         idx = WEICROP[video]
         I = I[idx[0]:idx[1], :]
         Is.append((I, IDims))
+    plt.figure(f1.number)
     plt.savefig("WeiAlignmentPaths.svg", bbox_inches = 'tight')
 
+    """
     #Plot frames aligned to each other
     plt.figure(figsize=(5*len(WEIVIDEOS), 5))
     for i in range(Is[0][0].shape[0]):
@@ -127,8 +201,9 @@ def alignWalkingVideos(eng):
             plt.axis('off')
             plt.title("Frame %i"%idx)
         plt.savefig("%i.png"%i, bbox_inches = 'tight')
+    """
 
-def plotAlignedWalkingVideos():
+def plotAlignedWalkingVideos(L = 200):
     IsMask = []
     MaskDims = []
     Is = []
@@ -141,15 +216,25 @@ def plotAlignedWalkingVideos():
         (I, IDims) = getWeiAlignedMask(video)
         if counter > 1:
             I = getEDT(I, IDims, doFlip = True)
-        IsMask.append(1.0*I)
+        I = 1.0*I
+        IsMask.append(I)
         MaskDims.append(IDims)
         D = getSSM(I)
-        D = get2DRankSSM(D)
         SSMs.append(D)
 
         if counter > 1:
-            D = doIBDTW(SSMs[0], SSMs[-1])
-            (DAll, CSM, backpointers, pathIBDTW) = DTWCSM(D)
+            [D1, D2] = [SSMs[0], SSMs[-1]]
+            (D1N1, D2N1) = matchSSMDist(D1, D2, L)
+            (D2N2, D1N2) = matchSSMDist(D2, D1, L)
+            D1 = doIBDTW(D1N1, D2N1)
+            D2 = doIBDTW(D1N2, D2N2)
+            (DAll, CSSM1, backpointers, path1) = DTWCSM(D1)
+            (DAll, CSSM2, backpointers, path2) = DTWCSM(D2)
+            D = D1
+            pathIBDTW = path1
+            if CSSM2[-1, -1] < CSSM1[-1, -1]:
+                D = D2
+                pathIBDTW = path2
             paths.append(projectPath(pathIBDTW, D.shape[0], D.shape[1], 1))
         counter += 1
         (I, IDims) = loadImageIOVideo("%s/walk/%s.avi"%(WEIPATH, video))
@@ -167,7 +252,7 @@ def plotAlignedWalkingVideos():
         plt.imshow(F, cmap = 'gray', interpolation = 'nearest')
         plt.title("Frame %i"%frames[i])
         plt.axis("off")
-        
+
         vidx = 1
         plt.subplot(2, len(frames), len(frames)+i+1)
         I = IsMask[vidx]
@@ -180,7 +265,7 @@ def plotAlignedWalkingVideos():
         plt.title("Frame %i"%idx)
     plt.savefig("WeiAlignedFeatures.svg", bbox_inches = 'tight')
 
-def partialAlignWalkingVideos(crossModal = True):
+def partialAlignWalkingVideos(crossModal = True, L = 200):
     IsMask = []
     Is = []
     SSMs = []
@@ -190,15 +275,14 @@ def partialAlignWalkingVideos(crossModal = True):
     plt.figure(figsize=(15, 5))
     for video in WEIVIDEOS:
         (I, IDims) = getWeiAlignedMask(video, doCrop = False)
-        IsMask.append(1.0*I)
+        I = 1.0*I
+        IsMask.append(I)
         if counter == 0 or not crossModal:
             D = getSSM(I)
-            D = get2DRankSSM(D)
             SSMs.append(D)
         else:
             I = getEDT(I, IDims)
             D = getSSM(I)
-            D = get2DRankSSM(D)
             SSMs.append(D)
         (I, IDims) = loadImageIOVideo("%s/walk/%s.avi"%(WEIPATH, video))
         Is.append((I, IDims))
@@ -214,13 +298,28 @@ def partialAlignWalkingVideos(crossModal = True):
         plt.imshow(SSMs[-1], cmap = 'afmhot', interpolation = 'nearest')
         plt.title(video)
 
-        CSWM = doIBSMWatGPU(SSMs[0], SSMs[-1], 0.3, True)
-        CSWM = CSWM - np.median(CSWM)
-        CSWM = CSWM/np.max(np.abs(CSWM))
-        CSWMs.append(CSWM)
+        [D1, D2] = [SSMs[0], SSMs[-1]]
+        (D1N1, D2N1) = matchSSMDist(D1, D2, L)
+        (D2N2, D1N2) = matchSSMDist(D2, D1, L)
         matchfn = lambda x: x
         hvPenalty = -0.4
-        res = SMWat(CSWM, matchfn, hvPenalty, backtrace = True)
+        #Try 1 To 2 Normalization
+        CSWM1 = doIBSMWatGPU(D1N1, D2N1, 0.3, True)
+        CSWM1 = CSWM1 - np.median(CSWM1)
+        CSWM1 = CSWM1/np.max(np.abs(CSWM1))
+        res1 = SMWat(CSWM1, matchfn, hvPenalty, backtrace = True)
+        #Try 2 To 1 Normalization
+        CSWM2 = doIBSMWatGPU(D1N2, D2N2, 0.3, True)
+        CSWM2 = CSWM2 - np.median(CSWM2)
+        CSWM2 = CSWM2/np.max(np.abs(CSWM2))
+        res2 = SMWat(CSWM2, matchfn, hvPenalty, backtrace = True)
+        res = res1
+        CSWM = CSWM1
+        if res2['pathScore'] > res1['pathScore']:
+            res = res2
+            CSWM = CSWM2
+
+        CSWMs.append(CSWM)
         path = res['path']
 
         plt.subplot(1, 3, 3)
@@ -261,7 +360,7 @@ def partialAlignWalkingVideos(crossModal = True):
 
             plt.savefig("%i_%i.png"%(vidx, i), bbox_inches = 'tight')
 
-def runAlignmentExperiments(eng, K = 10, NPerVideo = 50):
+def runAlignmentExperiments(eng, K = 10, NPerVideo = 50, doPlot = False):
     """
     Run experiments randomly warping the video and trying to align that
     to the 3D histograms
@@ -276,7 +375,7 @@ def runAlignmentExperiments(eng, K = 10, NPerVideo = 50):
         print("Doing Video %i of %i..."%(vidx+1, NVideos))
         video = WEIVIDEOS[vidx]
         (I1, IDims) = getWeiAlignedMask(video)
-        I2 = getEDT(I1, IDims)
+        I2 = 1.0*getEDT(I1, IDims)
         I1 = 1.0*I1
         WarpDict = getWarpDictionary(I2.shape[0])
         for expNum in range(NPerVideo):
@@ -284,10 +383,12 @@ def runAlignmentExperiments(eng, K = 10, NPerVideo = 50):
             t2 = getWarpingPath(WarpDict, K, False)
             I2Warped = getInterpolatedEuclideanTimeSeries(I2, t2)
             sio.savemat("Weizmann.mat", {"I1":I1, "I2Warped":I2Warped, "t2":t2})
-            plt.clf()
-            sio.savemat("%i_%i.mat"%(vidx, expNum), {"X1":I1, "X2":I2Warped})
-            (errors, Ps) = doAllAlignments(eng, I1, I2Warped, t2, drawPaths = True)
-            plt.savefig("%i_%i.svg"%(vidx, expNum))
+            if doPlot:
+                plt.clf()
+                sio.savemat("%i_%i.mat"%(vidx, expNum), {"X1":I1, "X2":I2Warped})
+            (errors, Ps) = doAllAlignments(eng, I1, I2Warped, t2, drawPaths = doPlot)
+            if doPlot:
+                plt.savefig("%i_%i.svg"%(vidx, expNum))
             types = errors.keys()
             for t in types:
                 if not t in AllErrors:
@@ -296,12 +397,12 @@ def runAlignmentExperiments(eng, K = 10, NPerVideo = 50):
         sio.savemat("WeizmannErrors%i.mat"%NPerVideo, AllErrors)
 
 if __name__ == '__main__':
-    #eng = initMatlabEngine()
+    eng = initMatlabEngine()
     initParallelAlgorithms()
-    plotAlignedWalkingVideos()
+    #plotAlignedWalkingVideos()
     #alignWalkingVideos(eng)
-    #runAlignmentExperiments(eng, NPerVideo = 100)
-    #partialAlignWalkingVideos(crossModal = True)
+    runAlignmentExperiments(eng, NPerVideo = 100)
+    #partialAlignWalkingVideos(crossModal = False)
 
 if __name__ == '__main__2':
     X = sio.loadmat(WEIPATH + "/mask.mat")

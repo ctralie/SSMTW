@@ -84,20 +84,6 @@ def get2DZNormSSM(SSM):
     std = np.std(SSM.flatten())
     return SSM/std
 
-def getIntHist(D, L):
-    """
-    Helper function for matchSSMDist that returns a histogram of
-    the integers in the range [0, L-1]
-    :param D: Integer discretized distance matrix taking values in [0, L-1]
-    :param L: The number of levels
-    :return: The normalized probability mass function
-    """
-    counts = np.unique(D.flatten(), return_counts = True)
-    p = np.zeros(L)
-    p[counts[0].astype(np.int64)] = counts[1]
-    p /= np.sum(p)
-    return p
-
 def matchSSMDist(A, B, L = 100):
     """
     Normalize the distance matrices A and B to the range [0, 1],

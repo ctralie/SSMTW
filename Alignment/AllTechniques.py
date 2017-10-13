@@ -5,66 +5,97 @@ from Alignment.Alignments import *
 from Alignment.ctw.CTWLib import *
 import time
 
-def getIBDTWAlignment(X1, X2, useGPU = True, normFn = get2DRankSSM, Verbose = False, doPlot = False):
+def getIBDTWAlignment(X1, X2, L = 100, useGPU = True, Verbose = False, doPlot = False):
     """
     Get alignment path for SSMs and ranked SSMs
+    :param X1: Euclidean point cloud 1
+    :param X2: Euclidean point cloud 2
+    :param L: Number of levels to use in histogram matching
+    :param useGPU: Whether to use the GPU
+    :param Verbose: Whether to print timing information
+    :param doPlot: Whether to plot the SSMs, CSWMs, and alignment results
     """
     tic = time.time()
-    SSM1 = np.array(getSSM(X1), dtype = np.float32)
-    SSM2 = np.array(getSSM(X2), dtype = np.float32)
-    SSM1Norm = np.array(normFn(SSM1), dtype = np.float32)
-    SSM2Norm = np.array(normFn(SSM2), dtype = np.float32)
+    D1 = getSSM(X1)
+    D2 = getSSM(X2)
+    (D1N1, D2N1) = matchSSMDist(D1, D2, L)
+    (D2N2, D1N2) = matchSSMDist(D2, D1, L)
     if useGPU:
         from Alignment.DTWGPU import doIBDTWGPU
-        D = doIBDTWGPU(SSM1, SSM2, returnCSM = True)
-        DNorm = doIBDTWGPU(SSM1Norm, SSM2Norm, returnCSM = True)
+        D = doIBDTWGPU(D1, D2, returnCSM = True)
+        DNorm1 = doIBDTWGPU(D1N1, D2N1, returnCSM = True)
+        DNorm2 = doIBDTWGPU(D1N2, D2N2, returnCSM = True)
     else:
-        D = doIBDTW(SSM1, SSM2)
-        DNorm = doIBDTW(SSM1Norm, SSM2Norm)
+        D = doIBDTW(D1, D2)
+        DNorm1 = doIBDTW(D1N1, D2N1)
+        DNorm2 = doIBDTW(D1N2, D2N2)
     if Verbose:
         print("Elapsed Time GPU: %g"%(time.time() - tic))
-    (DAll, CSM, backpointers, path) = DTWCSM(D)
-    (DAllN, CSMN, backpointersN, pathN) = DTWCSM(DNorm)
+
+    (DAll, CSSM, backpointers, path) = DTWCSM(D)
+    (DAllN, CSSM1, backpointersN, pathN12) = DTWCSM(DNorm1)
+    (DAllN, CSSM2, backpointersN, pathN21) = DTWCSM(DNorm2)
+
     if Verbose:
         print("Elapsed Time Total: %g"%(time.time() - tic))
 
     if doPlot:
         plt.figure(figsize=(10, 10))
-        plt.subplot(321)
-        plt.imshow(SSM1, cmap = 'afmhot', interpolation = 'nearest')
+        plt.subplot(331)
+        plt.imshow(D1, cmap = 'afmhot', interpolation = 'nearest')
         plt.axis('off')
         plt.title('SSM 1')
-        plt.subplot(322)
-        plt.imshow(SSM2, cmap = 'afmhot', interpolation = 'nearest')
+        plt.subplot(334)
+        plt.imshow(D2, cmap = 'afmhot', interpolation = 'nearest')
         plt.axis('off')
         plt.title('SSM 2')
-
-        plt.subplot(323)
-        plt.imshow(SSM1Norm, cmap = 'afmhot', interpolation = 'nearest')
-        plt.axis('off')
-        plt.title('SSM 1 Norm')
-        plt.subplot(324)
-        plt.imshow(SSM2Norm, cmap = 'afmhot', interpolation = 'nearest')
-        plt.axis('off')
-        plt.title('SSM 2 Norm')
-
-        plt.subplot(325)
+        plt.subplot(337)
         plt.imshow(D, cmap = 'afmhot', interpolation = 'nearest')
         plt.hold(True)
         plt.scatter(path[:, 1], path[:, 0], 5, 'r', edgecolor = 'none')
-        plt.xlim([0, CSM.shape[1]])
-        plt.ylim([CSM.shape[0], 0])
+        plt.xlim([0, D.shape[1]])
+        plt.ylim([D.shape[0], 0])
         plt.axis('off')
-        plt.title("CSWM Orig")
+        plt.title("CSWM Orig\nScore = %.3g"%D[-1, -1])
 
-        plt.subplot(326)
-        plt.imshow(DNorm, cmap = 'afmhot', interpolation = 'nearest')
-        plt.hold(True)
-        plt.scatter(pathN[:, 1], pathN[:, 0], 5, 'c', edgecolor = 'none')
-        plt.xlim([0, CSMN.shape[1]])
-        plt.ylim([CSMN.shape[0], 0])
+        plt.subplot(332)
+        plt.imshow(D1N1, cmap = 'afmhot', interpolation = 'nearest')
         plt.axis('off')
-        plt.title("CSWM Normed")
+        plt.title('SSM 1 Norm To 2')
+        plt.subplot(335)
+        plt.imshow(D2N1, cmap = 'afmhot', interpolation = 'nearest')
+        plt.axis('off')
+        plt.title('SSM 2')
+        plt.subplot(338)
+        plt.imshow(DNorm1, cmap = 'afmhot', interpolation = 'nearest')
+        plt.hold(True)
+        plt.scatter(pathN12[:, 1], pathN12[:, 0], 5, 'c', edgecolor = 'none')
+        plt.xlim([0, DNorm1.shape[1]])
+        plt.ylim([DNorm1.shape[0], 0])
+        plt.axis('off')
+        plt.title("CSWM 1 Norm To 2\nScore = %.3g"%CSSM1[-1, -1])
+
+        plt.subplot(333)
+        plt.imshow(D1N2, cmap = 'afmhot', interpolation = 'nearest')
+        plt.axis('off')
+        plt.title('SSM 1')
+        plt.subplot(336)
+        plt.imshow(D2N2, cmap = 'afmhot', interpolation = 'nearest')
+        plt.axis('off')
+        plt.title('SSM 2 Norm To 1')
+        plt.subplot(339)
+        plt.imshow(DNorm2, cmap = 'afmhot', interpolation = 'nearest')
+        plt.hold(True)
+        plt.scatter(pathN21[:, 1], pathN21[:, 0], 5, 'm', edgecolor = 'none')
+        plt.xlim([0, DNorm2.shape[1]])
+        plt.ylim([DNorm2.shape[0], 0])
+        plt.axis('off')
+        plt.title("CSWM 2 Norm To 1\nScore = %.3g"%CSSM2[-1, -1])
+
+    pathN = pathN12
+    #Return the normalized path with the best alignment score
+    if CSSM2[-1, -1] < CSSM1[-1, -1]:
+        pathN = pathN21
     return (path, pathN)
 
 def doAllAlignments(eng, X1, X2, t2, doPCA = 1, useGPU = True, drawPaths = False, drawAlignmentScores = False):
