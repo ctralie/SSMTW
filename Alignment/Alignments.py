@@ -63,11 +63,12 @@ def LevDist(a, b):
     return (D, path)
 
 
-def DTWCSM(CSM):
+def DTWCSM(CSM, doBacktrace = True):
     #TODO: Update this code to be more like Smith Waterman code
     """
     Perform dynamic time warping on a cros-similarity matrix
     :param CSM: An MxN cross-similarity matrix
+    :param doBacktrace: Whether to backtrace for the optimal path
     :return ((M+1)x(N+1) dynamic programming matrix, CSM, backpointers,
             optimal path)
     """
@@ -97,7 +98,8 @@ def DTWCSM(CSM):
             if du == D[i, j]:
                 backpointers[(i, j)].append([i-1, j, False])
     path = []
-    Backtrace(backpointers, (M, N), path) #Recursive backtrace from the end
+    if doBacktrace:
+        Backtrace(backpointers, (M, N), path) #Recursive backtrace from the end
     path = np.array(path)
     return (D, CSM, backpointers, path)
 
