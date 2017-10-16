@@ -98,8 +98,14 @@ def matchSSMDist(A, B, L = 100):
     :param L: Number of discretization levels
     """
     #Discretize to the range [0, L-1]
-    AFlat = np.round((L-1)*A.flatten()/np.max(A))
-    BFlat = np.round((L-1)*B.flatten()/np.max(B))
+    if np.max(A) > 0:
+        AFlat = np.round((L-1)*A.flatten()/np.max(A))
+    else:
+        AFlat = np.zeros(A.shape)
+    if np.max(B) > 0:
+        BFlat = np.round((L-1)*B.flatten()/np.max(B))
+    else:
+        BFlat = np.zeros(B.shape)
     #Compute normalized CDFs
     valsA, idxA, countsA = np.unique(AFlat, return_inverse = True, return_counts = True)
     PA = np.cumsum(countsA).astype(np.float64)
