@@ -82,6 +82,8 @@ def get2DZNormSSM(SSM):
     Return the SSM normalized by the standard deviation over all pixels
     """
     std = np.std(SSM.flatten())
+    if std == 0:
+        return np.zeros(SSM.shape)
     return SSM/std
 
 def matchSSMDist(A, B, L = 100):

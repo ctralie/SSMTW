@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from Alignment import Alignments, AlignmentTools, DTWGPU, SyntheticCurves, AllTechniques
 
-useGPU = False
+useGPU = True
 
 if useGPU:
     #Must compile CUDA kernels before doing anything

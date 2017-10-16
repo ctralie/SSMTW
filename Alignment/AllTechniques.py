@@ -96,6 +96,10 @@ def getIBDTWAlignment(X1, X2, L = 100, useGPU = True, Verbose = False, doPlot = 
     #Return the normalized path with the best alignment score
     if CSSM2[-1, -1] < CSSM1[-1, -1]:
         pathN = pathN21
+        if Verbose:
+            print("\n\n\n-----------------\nPATH 2\n\n\n-----------------\n")
+    elif Verbose:
+        print("\n\n\n-----------------\nPATH 1\n\n\n-----------------\n")
     return (path, pathN)
 
 def doAllAlignments(eng, X1, X2, t2, doPCA = 1, useGPU = True, drawPaths = False, drawAlignmentScores = False):

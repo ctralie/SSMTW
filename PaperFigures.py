@@ -18,7 +18,6 @@ def makeColorbar(dim1, dim2, k):
     plt.colorbar(cax = cax)
 
 def ConceptFigure():
-    initParallelAlgorithms()
     plotbgcolor = (0.15, 0.15, 0.15)
     np.random.seed(2)
     M = 100
@@ -35,23 +34,19 @@ def ConceptFigure():
     SSMX = getSSM(X)
     SSMY = getSSM(Y)
 
-    D = doIBDTWGPU(SSMX, SSMY, True, True)
+    CSWM = doIBDTW(SSMX, SSMY)
 
-    (DAll, CSM, backpointers, path) = DTWCSM(D)
+    (DAll, CSM, backpointers, path) = DTWCSM(CSWM)
     pathProj = projectPath(path, M, N, 1)
-    print(pathProj)
     i11 = 15
     i12 = pathProj[i11, 1]
-    i21 = 75
+    i21 = 74
     i22 = pathProj[i21, 1]
     color1 = np.array([1.0, 0.0, 0.3])
     color2 = np.array([0.0, 0.5, 1.0])
 
-    gridSize = (10, 12)
-
-    plt.figure(figsize=(24, 4))
-    #plt.subplot2grid(gridSize, (0, 0), colspan = 4, rowspan = 6)
-    plt.subplot(151)
+    plt.figure(figsize=(12, 8.3))
+    plt.subplot(231)
     plt.scatter(X[:, 0], X[:, 1], 20, np.arange(M), cmap = 'Spectral', edgecolor = 'none')
     plt.scatter(Y[:, 0], Y[:, 1], 20, np.arange(N), cmap = 'Spectral', edgecolor = 'none')
     plt.scatter(X[i11, 0], X[i11, 1], 150, color = color1, edgecolor = 'none')
@@ -63,8 +58,7 @@ def ConceptFigure():
     ax = plt.gca()
     ax.set_axis_bgcolor(plotbgcolor)
 
-    #plt.subplot2grid(gridSize, (0, 4), colspan = 4, rowspan = 6)
-    plt.subplot(152)
+    plt.subplot(232)
     plt.imshow(SSMX, interpolation = 'nearest', cmap = 'gray')
     plt.plot(np.arange(M), i11*np.ones(M), color = color1, lineWidth=4)
     plt.plot(np.arange(M), i21*np.ones(M), color = color2, lineWidth=4)
@@ -76,8 +70,7 @@ def ConceptFigure():
     plt.xlabel("Time Index")
     plt.ylabel("Time Index")
 
-    #plt.subplot2grid(gridSize, (0, 8), colspan = 4, rowspan = 6)
-    plt.subplot(153)
+    plt.subplot(233)
     plt.imshow(SSMY, interpolation = 'nearest', cmap = 'gray')
     plt.plot(np.arange(N), i12*np.ones(N), color = color1, lineWidth=4, lineStyle='--')
     plt.plot(np.arange(N), i22*np.ones(N), color = color2, lineWidth=4, lineStyle='--')
@@ -89,8 +82,16 @@ def ConceptFigure():
     plt.xlabel("Time Index")
     plt.ylabel("Time Index")
 
-    #plt.subplot2grid(gridSize, (6, 0), colspan = 6, rowspan = 4)
-    plt.subplot(154)
+    plt.subplot(234)
+    plt.imshow(np.log(CSWM), cmap = 'afmhot', interpolation = 'nearest')
+    plt.scatter(path[:, 1], path[:, 0], 2, color='c')
+    plt.xlim([0, CSWM.shape[1]])
+    plt.ylim([CSWM.shape[0], 0])
+    plt.xlabel("Time Index 2")
+    plt.ylabel("Time Index 1")
+    plt.title("Cross-Similarity Warp Matrix\n(CSWM)")
+
+    plt.subplot(235)
     plt.plot(np.arange(M), SSMX[i11, :], color = color1)
     plt.plot(np.arange(N), SSMY[i12, :], color = color1, lineStyle='--')
     plt.ylim([0, np.max(SSMX)])
@@ -101,7 +102,7 @@ def ConceptFigure():
     plt.ylabel("Distance")
     plt.legend(["SSM 1 Row %i"%i11, "SSM 2 Row %i"%i12], fontsize=12, loc = (0.02, 0.8))
 
-    plt.subplot(155)
+    plt.subplot(236)
     plt.plot(np.arange(M), SSMX[i21, :], color = color2)
     plt.plot(np.arange(N), SSMY[i22, :], color = color2, lineStyle='--')
     plt.ylim([0, np.max(SSMX)])
@@ -112,7 +113,7 @@ def ConceptFigure():
     plt.ylabel("Distance")
     plt.legend(["SSM 1 Row %i"%i21, "SSM 2 Row %i"%i22], fontsize=12, loc = (0.02, 0.8))
 
-    plt.savefig("IntroFig.svg", bbox_inches = 'tight')
+    plt.savefig("IntroFigure.svg", bbox_inches = 'tight')
 
 def IBDTWExample(compareCPU = False):
     initParallelAlgorithms()
@@ -521,11 +522,11 @@ def SyntheticResults():
 
     for curve in Curves:
         #X = sio.loadmat("Results/Synthetic/%sErrors.mat"%curve)
-        X = sio.loadmat("Results/Synthetic_DTWInit/%sErrors.mat"%curve)
+        X = sio.loadmat("Results/Synthetic_DTWInit_HistMatch/%sErrors.mat"%curve)
         for t in Types:
             AllErrors[t] = np.concatenate((AllErrors[t], X['P%s'%t].flatten()), 0)
 
-    N = len(AllErrors[AllErrors.keys()[0]])
+    N = AllErrors['GTW'].size
     X = np.zeros((N, len(AllErrors)))
     for i in range(len(Types)):
         X[:, i] = AllErrors[Types[i]]
@@ -570,7 +571,7 @@ def BUResults():
     plt.savefig("BUResults.svg", bbox_inches = 'tight')
 
 if __name__ == '__main__':
-    #ConceptFigure()
+    ConceptFigure()
     #IBDTWExample()
     #Figure8Reparam()
     #Figure8Normalization()
@@ -578,4 +579,4 @@ if __name__ == '__main__':
     #EulerianInterp(100)
     #SyntheticResults()
     #WeizmannResults()
-    BUResults()
+    #BUResults()
