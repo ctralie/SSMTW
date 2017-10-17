@@ -214,6 +214,27 @@ def getInterpolatedEuclideanTimeSeries(X, t):
     Y = f(dix, t)
     return Y
 
+def doDiagConvolutionSSM(D, W):
+    """
+    Do what an L1 delay embedding would do
+    """
+    N = D.shape[0]
+    ND = N-W+1
+    DRet = np.zeros((ND, ND))
+    #Use the fact that a delay embedding is just a moving average along
+    #all diagonals
+    for i in range(N-W+1):
+        b = np.diag(D, i)
+        b2 = np.cumsum(b)
+        bend = b2[W-1:]
+        bbegin = np.zeros(len(bend))
+        bbegin[1:] = b2[0:len(bend)-1]
+        b2 = bend - bbegin
+        DRet[np.arange(len(b2)), i + np.arange(len(b2))] = b2
+    DRet = DRet + DRet.T
+    return DRet
+
+
 def projectPath(path, M, N, direction = 0):
     """
     Project the path onto one of the axes of the CSWM so that the

@@ -273,30 +273,38 @@ def partialAlignWalkingVideos(crossModal = True, L = 200):
     CSWMs = [[]]
     counter = 0
     plt.figure(figsize=(15, 5))
+    v1str = WEIVIDEOS[0][0:-5]
+    v1str = v1str[0].capitalize() + v1str[1::]
     for video in WEIVIDEOS:
         (I, IDims) = getWeiAlignedMask(video, doCrop = False)
         I = 1.0*I
-        IsMask.append(I)
         if counter == 0 or not crossModal:
             D = getSSM(I)
             SSMs.append(D)
         else:
-            I = getEDT(I, IDims)
+            I = 1.0*getEDT(I, IDims)
             D = getSSM(I)
             SSMs.append(D)
+        IsMask.append((I, IDims))
         (I, IDims) = loadImageIOVideo("%s/walk/%s.avi"%(WEIPATH, video))
         Is.append((I, IDims))
         if counter == 0:
             counter += 1
             continue
+        v2str = WEIVIDEOS[counter][0:-5]
+        v2str = v2str[0].capitalize() + v2str[1::]
         plt.clf()
         plt.subplot(1, 3, 1)
         plt.imshow(SSMs[0], cmap = 'afmhot', interpolation = 'nearest')
-        plt.title(WEIVIDEOS[0])
+        plt.title("%s Mask"%v1str)
+        plt.xlabel("Frame Number")
+        plt.ylabel("Frame Number")
 
         plt.subplot(1, 3, 2)
         plt.imshow(SSMs[-1], cmap = 'afmhot', interpolation = 'nearest')
-        plt.title(video)
+        plt.title("%s EDT"%v2str)
+        plt.xlabel("Frame Number")
+        plt.ylabel("Frame Number")
 
         [D1, D2] = [SSMs[0], SSMs[-1]]
         (D1N1, D2N1) = matchSSMDist(D1, D2, L)
@@ -326,13 +334,16 @@ def partialAlignWalkingVideos(crossModal = True, L = 200):
         plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
         plt.scatter(path[:, 1], path[:, 0], 5, 'c', edgecolor = 'none')
         paths.append(projectPath(path, CSWM.shape[0], CSWM.shape[1], 1))
+        plt.title("PCSWM")
+        plt.xlabel("%s Frame Number"%v2str)
+        plt.ylabel("%s Frame Number"%v1str)
 
         plt.savefig("WeiPartialAlignmentPaths%i.svg"%counter, bbox_inches = 'tight')
         counter += 1
 
-    #Plot frames aligned to each other
+    #Plot video frames aligned to each other
     plt.figure(figsize=(15, 5))
-    for vidx in range(1, len(Is)):
+    for vidx in [1]:#range(1, len(Is)):
         path = paths[vidx]
         CSWM = CSWMs[vidx]
         for i in range(path.shape[0]):
@@ -359,6 +370,32 @@ def partialAlignWalkingVideos(crossModal = True, L = 200):
             plt.scatter(path[i, 1], path[i, 0], 30, 'k')
 
             plt.savefig("%i_%i.png"%(vidx, i), bbox_inches = 'tight')
+
+    frames = range(2, 20, 3)
+    #Plot feature frames aligned to each other
+    plt.figure(figsize=(1.5*len(frames), 4))
+    for i in range(len(frames)):
+        plt.subplot(2, len(frames), i+1)
+        I = IsMask[0][0]
+        MaskDims = IsMask[0][1]
+        F = I[frames[i], :]
+        F = np.reshape(F, MaskDims)
+        plt.imshow(F, cmap = 'gray', interpolation = 'nearest')
+        plt.title("Frame %i"%frames[i])
+        plt.axis("off")
+
+        vidx = 1
+        plt.subplot(2, len(frames), len(frames)+i+1)
+        I = IsMask[vidx][0]
+        MaskDims = IsMask[vidx][1]
+        idx = paths[vidx][frames[i], 1]
+        if idx >= I.shape[0]:
+            idx = I.shape[0]-1
+        F = np.reshape(I[idx, :], MaskDims)
+        plt.imshow(F, cmap = 'afmhot', interpolation = 'nearest')
+        plt.axis('off')
+        plt.title("Frame %i"%idx)
+    plt.savefig("PartialFrames.svg", bbox_inches = 'tight')
 
 def runAlignmentExperiments(eng, K = 10, NPerVideo = 50, doPlot = False):
     """
@@ -401,8 +438,8 @@ if __name__ == '__main__':
     initParallelAlgorithms()
     #plotAlignedWalkingVideos()
     #alignWalkingVideos(eng)
-    runAlignmentExperiments(eng, NPerVideo = 100)
-    #partialAlignWalkingVideos(crossModal = False)
+    #runAlignmentExperiments(eng, NPerVideo = 100)
+    partialAlignWalkingVideos(crossModal = True)
 
 if __name__ == '__main__2':
     X = sio.loadmat(WEIPATH + "/mask.mat")
