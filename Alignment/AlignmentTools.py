@@ -269,7 +269,7 @@ def projectPath(path, M, N, direction = 0):
         retpath[:, 1] = np.argsort(-involved, 1)[:, 0]
         #Prune to the row indices that are actually used
         rowmin = np.min(path[:, 0])
-        rowmax = np.max(path[:, 1])
+        rowmax = np.max(path[:, 0])
         retpath = retpath[(retpath[:,0]>=rowmin)*(retpath[:,0]<=rowmax), :]
     return retpath
 
