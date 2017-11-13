@@ -72,7 +72,7 @@ __global__ void SMWatSSM(float* SSMA, float* SSMB, float* CSM, int M, int N, int
             if (val < 0) {
                 val = val*-1.0f;
             }
-            val = expf(-val/0.09f)-0.6f;
+            val = expf(-val/0.01f)-0.6f;
             score = 0.0;
             //Above
             if (idx + upoff + 1 < N + M - 1 && thisi > 0) {

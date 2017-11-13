@@ -230,7 +230,7 @@ def IBDTWExample(compareCPU = False):
     plt.savefig("IBDTWExample.svg", bbox_inches='tight')
 
 def Figure8Reparam():
-    plt.figure(figsize=(10, 10))
+    plt.figure(figsize=(14, 3))
     initParallelAlgorithms()
     plotbgcolor = (0.15, 0.15, 0.15)
     N = 200
@@ -245,7 +245,7 @@ def Figure8Reparam():
     X2[:, 1] = np.sin(4*np.pi*ut)
     X2 = X2 + np.array([1, -2.2])
 
-    plt.subplot(221)
+    plt.subplot(141)
     plt.scatter(X1[:, 0], X1[:, 1], 20, np.arange(N), cmap='Spectral', edgecolor = 'none')
     plt.text(0.5, -0.2, '$t$', fontsize=30, color = 'w')
     plt.scatter(X2[:, 0], X2[:, 1], 20, np.arange(N), cmap='Spectral', edgecolor = 'none')
@@ -255,9 +255,9 @@ def Figure8Reparam():
     ax.set_xticks([])
     ax.set_yticks([])
     plt.axis('equal')
-    plt.title("Figure 8 Different Parameterizations")
+    plt.title("Figure 8 Point Clouds")
 
-    plt.subplot(222)
+    plt.subplot(142)
     plt.plot(t, t, 'b', label='t')
     plt.hold(True)
     plt.plot(t, ut, 'r', label='u(t)')
@@ -273,7 +273,7 @@ def Figure8Reparam():
     pathProj = projectPath(path, N, N, direction = 1)
     idxs = np.arange(0, N, 20)
 
-    plt.subplot(223)
+    plt.subplot(143)
     plt.imshow(D1, interpolation = 'nearest', cmap = 'afmhot')
     for idx in idxs:
         plt.plot([idx, idx], [0, N], 'k', lineWidth=2)
@@ -283,9 +283,9 @@ def Figure8Reparam():
     plt.xlim([-6, N])
     plt.ylim([N, -6])
     plt.axis('off')
-    plt.title("SSM Parameterized by $t$")
+    plt.title("SSM $\gamma_8(t)$")
 
-    plt.subplot(224)
+    plt.subplot(144)
     plt.imshow(D2, interpolation = 'nearest', cmap = 'afmhot')
     for idxother in idxs:
         idx = pathProj[idxother, 1]
@@ -296,7 +296,7 @@ def Figure8Reparam():
     plt.xlim([-6, N])
     plt.ylim([N, -6])
     plt.axis('off')
-    plt.title("SSM Parameterized by $u(t)$")
+    plt.title("SSM $\gamma_8(u(t))$")
 
     plt.savefig("Figure8Reparam.svg", bbox_inches = 'tight')
 
@@ -430,65 +430,52 @@ def EulerianInterp(L = 100):
     (D2N, D1N) = matchSSMDist(D2, D1, L)
     (D1N2, D2N2) = matchSSMDist(D1, D2, L)
 
-    plt.figure(figsize=(22, 8))
-    plt.subplot(251)
+    plt.figure(figsize=(14, 6))
+    plt.subplot(241)
     plt.plot(fs)
     plt.xlabel("Time")
     plt.ylabel("Position")
     plt.title("Lagrangian Coordinates")
-    plt.subplot(252)
-    plt.title("Lagrangian SSM Original")
-    plt.imshow(D1, cmap = ssmcmap, interpolation = 'nearest')
-    plt.ylabel("Time")
-    ax = plt.gca()
-    ax.set_xticks([])
-    makeColorbar(2, 5, 2)
 
-    plt.subplot(253)
+    plt.subplot(242)
     plt.title("Lagrangian SSM Discretized")
     plt.scatter(np.arange(NCols), Row*np.ones(NCols), 20, colors[0], edgecolor = 'none')
     plt.imshow(D1N, cmap = ssmcmap, interpolation = 'nearest')
     plt.axis('off')
-    makeColorbar(2, 5, 3)
+    makeColorbar(2, 4, 2)
 
-    plt.subplot(254)
+    plt.subplot(243)
     plt.title("Lagrangian SSM To Eulerian")
     plt.scatter(np.arange(NCols), Row*np.ones(NCols), 20, colors[1], edgecolor = 'none')
     plt.imshow(D1N2, cmap = ssmcmap, interpolation = 'nearest')
     plt.axis('off')
-    makeColorbar(2, 5, 4)
+    makeColorbar(2, 4, 3)
 
 
-    plt.subplot(256)
+    plt.subplot(245)
     plt.imshow(1-X, cmap = 'gray', interpolation = 'nearest')
     plt.xlabel("Pixels")
     plt.ylabel("Time")
     plt.title("Eulerian Coordinates")
-    plt.subplot(257)
-    plt.imshow(D2, cmap = ssmcmap, interpolation = 'nearest')
-    plt.title("Eulerian SSM Original")
-    plt.xlabel("Time")
-    plt.ylabel("Time")
-    makeColorbar(2, 5, 7)
-
-    plt.subplot(258)
+    
+    plt.subplot(246)
     plt.scatter(np.arange(NCols), Row*np.ones(NCols), 20, colors[2], edgecolor = 'none')
     plt.imshow(D2N, cmap = ssmcmap, interpolation = 'nearest')
     plt.title("Eulerian SSM To Lagrangian")
     plt.xlabel("Time")
     ax = plt.gca()
     ax.set_yticks([])
-    makeColorbar(2, 5, 8)
-    plt.subplot(259)
+    makeColorbar(2, 4, 6)
+    plt.subplot(247)
     plt.scatter(np.arange(NCols), Row*np.ones(NCols), 20, colors[3], edgecolor = 'none')
     plt.imshow(D2N2, cmap = ssmcmap, interpolation = 'nearest')
     plt.title("Eulerian SSM Discretized")
     plt.xlabel("Time")
     ax = plt.gca()
     ax.set_yticks([])
-    makeColorbar(2, 5, 9)
+    makeColorbar(2, 4, 7)
 
-    plt.subplot(2, 5, 5)
+    plt.subplot(2, 4, 4)
     plt.plot(D1N[Row, 0:NCols], c=colors[0], lineWidth=4, linestyle='--')
     plt.plot(D2N[Row, 0:NCols], c = colors[2], lineWidth=2)
     plt.plot(D2N2[Row, 0:NCols], c=colors[3], lineWidth=4, linestyle=':')
@@ -498,7 +485,7 @@ def EulerianInterp(L = 100):
     ax.yaxis.tick_right()
     plt.title("Eulerian To Lagrangian")
 
-    plt.subplot(2, 5, 10)
+    plt.subplot(2, 4, 8)
     plt.plot(D1N[Row, 0:NCols], c=colors[0], lineWidth=4, linestyle=':')
     plt.plot(D2N2[Row, 0:NCols], c=colors[3], lineWidth=4, linestyle='--')
     plt.plot(D1N2[Row, 0:NCols], c = colors[1], lineWidth=2)
@@ -571,9 +558,9 @@ def BUResults():
     plt.savefig("BUResults.svg", bbox_inches = 'tight')
 
 if __name__ == '__main__':
-    ConceptFigure()
+    #ConceptFigure()
     #IBDTWExample()
-    #Figure8Reparam()
+    Figure8Reparam()
     #Figure8Normalization()
     #Figure8InterpNormalization(100)
     #EulerianInterp(100)

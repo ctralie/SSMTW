@@ -4,3 +4,6 @@
 [submodule "SlidingWindowVideoTDA"]
 	path = SlidingWindowVideoTDA
 	url = https://github.com/ctralie/SlidingWindowVideoTDA.git
+[submodule "GeometricCoverSongs"]
+	path = GeometricCoverSongs
+	url = https://github.com/ctralie/GeometricCoverSongs.git

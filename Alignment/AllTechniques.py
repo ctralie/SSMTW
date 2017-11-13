@@ -5,7 +5,7 @@ from Alignment.Alignments import *
 from Alignment.ctw.CTWLib import *
 import time
 
-def getIBDTWAlignment(X1, X2, L = 100, useGPU = True, Verbose = False, doPlot = False):
+def getIBDTWAlignment(X1, X2, L = 100, useGPU = True, Verbose = False, doPlot = False, dBPlot = True):
     """
     Get alignment path for SSMs and ranked SSMs
     :param X1: Euclidean point cloud 1
@@ -14,6 +14,7 @@ def getIBDTWAlignment(X1, X2, L = 100, useGPU = True, Verbose = False, doPlot = 
     :param useGPU: Whether to use the GPU
     :param Verbose: Whether to print timing information
     :param doPlot: Whether to plot the SSMs, CSWMs, and alignment results
+    :param dBPlot: Whether to use dB when plotting the CSWM
     """
     tic = time.time()
     D1 = getSSM(X1)
@@ -50,7 +51,12 @@ def getIBDTWAlignment(X1, X2, L = 100, useGPU = True, Verbose = False, doPlot = 
         plt.axis('off')
         plt.title('SSM 2')
         plt.subplot(337)
-        plt.imshow(D, cmap = 'afmhot', interpolation = 'nearest')
+        if dBPlot:
+            DPlot = np.array(D)
+            DPlot[DPlot < 1e-7] = 1e-7
+            plt.imshow(np.log(DPlot), cmap = 'afmhot', interpolation = 'nearest')
+        else:
+            plt.imshow(D, cmap = 'afmhot', interpolation = 'nearest')
         plt.hold(True)
         plt.scatter(path[:, 1], path[:, 0], 5, 'r', edgecolor = 'none')
         plt.xlim([0, D.shape[1]])
@@ -67,7 +73,12 @@ def getIBDTWAlignment(X1, X2, L = 100, useGPU = True, Verbose = False, doPlot = 
         plt.axis('off')
         plt.title('SSM 2')
         plt.subplot(338)
-        plt.imshow(DNorm1, cmap = 'afmhot', interpolation = 'nearest')
+        if dBPlot:
+            DPlot = np.array(DNorm1)
+            DPlot[DPlot < 1e-7] = 1e-7
+            plt.imshow(np.log(DPlot), cmap = 'afmhot', interpolation = 'nearest')
+        else:
+            plt.imshow(DNorm1, cmap = 'afmhot', interpolation = 'nearest')
         plt.hold(True)
         plt.scatter(pathN12[:, 1], pathN12[:, 0], 5, 'c', edgecolor = 'none')
         plt.xlim([0, DNorm1.shape[1]])
@@ -84,7 +95,12 @@ def getIBDTWAlignment(X1, X2, L = 100, useGPU = True, Verbose = False, doPlot = 
         plt.axis('off')
         plt.title('SSM 2 Norm To 1')
         plt.subplot(339)
-        plt.imshow(DNorm2, cmap = 'afmhot', interpolation = 'nearest')
+        if dBPlot:
+            DPlot = np.array(DNorm2)
+            DPlot[DPlot < 1e-7] = 1e-7
+            plt.imshow(np.log(DPlot), cmap = 'afmhot', interpolation = 'nearest')
+        else:
+            plt.imshow(DNorm2, cmap = 'afmhot', interpolation = 'nearest')
         plt.hold(True)
         plt.scatter(pathN21[:, 1], pathN21[:, 0], 5, 'm', edgecolor = 'none')
         plt.xlim([0, DNorm2.shape[1]])

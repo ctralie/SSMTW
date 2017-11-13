@@ -305,6 +305,20 @@ def getProjectedPathParam(path, direction = 0, strcmap = 'Spectral'):
     C2 = C2[:, 0:3]
     return {'t1':t1, 't2':t2, 'C1':C1, 'C2':C2}
 
+def makePathStrictlyIncrease(path):
+    """
+    Given a warping path, remove all rows that do not
+    strictly increase from the row before
+    """
+    toKeep = np.ones(path.shape[0])
+    i0 = 0
+    for i in range(1, path.shape[0]):
+        if np.abs(path[i0, 0] - path[i, 0]) >= 1 and np.abs(path[i0, 1] - path[i, 1]) >= 1:
+            i0 = i
+        else:
+            toKeep[i] = 0
+    return path[toKeep == 1, :]
+
 
 def rasterizeWarpingPath(P):
     if np.sum(np.abs(P - np.round(P))) == 0:
