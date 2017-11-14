@@ -139,7 +139,7 @@ def doAllAlignments(eng, X1, X2, t2, doPCA = 1, useGPU = True, drawPaths = False
     types = Ps.keys()
     errors = {}
     for ptype in types:
-        err = computeAlignmentError(Ps[ptype], PGT, doPlot = drawAlignmentScores)
+        err = computeAlignmentError(Ps[ptype], PGT, etype = 2, doPlot = drawAlignmentScores)
         if drawAlignmentScores:
             plt.show()
         errors[ptype] = err

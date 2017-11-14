@@ -336,31 +336,68 @@ def rasterizeWarpingPath(P):
         ret.append([i2, j2])
     return np.array(ret)
 
-def computeAlignmentError(pP1, pP2, doPlot = False):
+def computeAlignmentError(pP1, pP2, etype = 2, doPlot = False):
     """
-    Compute area-based alignment error.  Assume that P1
-    and P2 are on the same grid
+    Compute area-based alignment error.  Assume that the 
+    warping paths are on the same grid
+    :param pP1: Mx2 warping path 1
+    :param pP2: Nx2 warping path 2
+    :param etype: Error type.  1 (default) is area ratio.  
+        2 is L1 Hausdorff distance
+    :param doPlot: Whether to plot the results
     """
     P1 = rasterizeWarpingPath(pP1)
     P2 = rasterizeWarpingPath(pP2)
-    M = np.max(P1[:, 0])
-    N = np.max(P1[:, 1])
-    A1 = np.zeros((M, N))
-    A2 = np.zeros((M, N))
-    for i in range(P1.shape[0]):
-        [ii, jj] = [P1[i, 0], P1[i, 1]]
-        [ii, jj] = [min(ii, M-1), min(jj, N-1)]
-        A1[ii, jj::] = 1.0
-    for i in range(P2.shape[0]):
-        [ii, jj] = [P2[i, 0], P2[i, 1]]
-        [ii, jj] = [min(ii, M-1), min(jj, N-1)]
-        A2[ii, jj::] = 1.0
-    A = np.abs(A1 - A2)
-    score = np.sum(A)/(float(M)*float(N))
-    if doPlot:
-        plt.imshow(A)
-        plt.hold(True)
-        plt.scatter(pP1[:, 1], pP1[:, 0], 5, 'c', edgecolor = 'none')
-        plt.scatter(pP2[:, 1], pP2[:, 0], 5, 'r', edgecolor = 'none')
-        plt.title("Score = %g"%score)
+    score = 0
+    if etype == 1:
+        M = np.max(P1[:, 0])
+        N = np.max(P1[:, 1])
+        A1 = np.zeros((M, N))
+        A2 = np.zeros((M, N))
+        for i in range(P1.shape[0]):
+            [ii, jj] = [P1[i, 0], P1[i, 1]]
+            [ii, jj] = [min(ii, M-1), min(jj, N-1)]
+            A1[ii, jj::] = 1.0
+        for i in range(P2.shape[0]):
+            [ii, jj] = [P2[i, 0], P2[i, 1]]
+            [ii, jj] = [min(ii, M-1), min(jj, N-1)]
+            A2[ii, jj::] = 1.0
+        A = np.abs(A1 - A2)
+        score = np.sum(A)/(float(M)*float(N))
+        if doPlot:
+            plt.imshow(A)
+            plt.hold(True)
+            plt.scatter(pP1[:, 1], pP1[:, 0], 5, 'c', edgecolor = 'none')
+            plt.scatter(pP2[:, 1], pP2[:, 0], 5, 'r', edgecolor = 'none')
+            plt.title("Score = %g"%score)
+    else:
+        C = getCSM(np.array(P1, dtype = np.float32), np.array(P2, dtype = np.float32))
+        score = (np.sum(np.min(C, 0)) + np.sum(np.min(C, 1)))/float(P1.shape[0]+P2.shape[0])
+        if doPlot:
+            plt.scatter(P1[:, 1], P1[:, 0], 20, 'c', edgecolor = 'none')
+            plt.scatter(P2[:, 1], P2[:, 0], 20, 'r', edgecolor = 'none')
+            idx = np.argmin(C, 1)
+            for i in range(len(idx)):
+                plt.plot([P1[i, 1], P2[idx[i], 1]], [P1[i, 0], P2[idx[i], 0]], 'k')
+            plt.title("Score = %g"%score)
     return score
+
+if __name__ == '__main__':
+    #Test out alignment errors
+    N = 100
+    t = np.linspace(0, 1, N)
+    t2 = t**2
+    P1 = np.zeros((N, 2))
+    P1[:, 0] = t*N
+    P1[:, 1] = t2*N
+    t2 = t**2.2
+    P2 = np.zeros((N, 2))
+    P2[:, 0] = t*N
+    P2[:, 1] = t2*N
+    plt.subplot(121)
+    score = computeAlignmentError(P1, P2, doPlot = True)
+    plt.title("Type 1 Score = %g"%score)
+    plt.subplot(122)
+    score = computeAlignmentError(P1, P2, 2, doPlot = True)
+    plt.title("Type 2 score = %g"%score)
+    plt.show()
