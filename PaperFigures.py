@@ -7,7 +7,7 @@ import scipy.io as sio
 from Alignment.SyntheticCurves import *
 from Alignment.Alignments import *
 from Alignment.AlignmentTools import *
-from Alignment.DTWGPU import *
+#from Alignment.DTWGPU import *
 
 def makeColorbar(dim1, dim2, k):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -520,10 +520,11 @@ def SyntheticResults():
 
     plt.figure(figsize=(6, 3))
     plt.boxplot(X, labels = Types)
+    plt.yscale('log')
+    #plt.ylim([0, 50])
     plt.xlabel("Alignment Algorithm")
     plt.ylabel("Alignment Error")
     plt.title("Synthetic Curve Alignment Results")
-    plt.ylim([0, 0.5])
     plt.savefig("SyntheticBoxPlotDTWInit.svg", bbox_inches = 'tight')
 
 def WeizmannResults():
@@ -534,8 +535,11 @@ def WeizmannResults():
     for i in range(len(Types)):
         X[:, i] = AllErrors["P%s"%Types[i]].flatten()
 
-    plt.figure(figsize=(6, 3))
+    plt.figure(figsize=(8, 3))
     plt.boxplot(X, labels = Types)
+    plt.ylim([0, 7])
+    #plt.ylim([0.1, 10])
+    #plt.yscale('log')
     plt.xlabel("Alignment Algorithm")
     plt.ylabel("Alignment Error")
     plt.title("Weizmann Mask To EDT Results")
@@ -549,21 +553,39 @@ def BUResults():
     for i in range(len(Types)):
         X[:, i] = AllErrors["P%s"%Types[i]].flatten()
     
-    plt.figure(figsize=(6, 3))
+    plt.figure(figsize=(8, 3))
     plt.boxplot(X, labels = Types)
-    plt.ylim([0, 0.4])
+    #plt.yscale('log')
     plt.xlabel("Alignment Algorithm")
     plt.ylabel("Alignment Error")
     plt.title("BU4D Face 2D Video To 3D Video")
     plt.savefig("BUResults.svg", bbox_inches = 'tight')
 
+def ClosedLoopResults():
+    X = sio.loadmat("Results/ClosedLoops.mat")['Scores'].flatten()
+    
+    plt.figure(figsize=(8, 3))
+    #plt.boxplot(X)
+    #plt.yscale('log')
+    #plt.ylabel("Alignment Error")
+    
+    bins = np.logspace(np.min(np.log10(X)), np.max(np.log10(X)), 50)
+    
+    plt.hist(X, bins = bins)
+    plt.gca().set_xscale("log")
+
+    plt.title("Closed Loop Alignment Errors")
+    plt.xlabel("Alignment Errors")
+    plt.savefig("ClosedLoops.svg", bbox_inches = 'tight')
+
 if __name__ == '__main__':
     #ConceptFigure()
     #IBDTWExample()
-    Figure8Reparam()
+    #Figure8Reparam()
     #Figure8Normalization()
     #Figure8InterpNormalization(100)
     #EulerianInterp(100)
-    #SyntheticResults()
-    #WeizmannResults()
-    #BUResults()
+    SyntheticResults()
+    WeizmannResults()
+    BUResults()
+    ClosedLoopResults()
