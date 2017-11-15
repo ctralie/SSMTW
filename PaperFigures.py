@@ -4,6 +4,7 @@ Make some extra figures for the paper
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
+from mpl_toolkits.mplot3d import Axes3D
 from Alignment.SyntheticCurves import *
 from Alignment.Alignments import *
 from Alignment.AlignmentTools import *
@@ -499,9 +500,17 @@ def EulerianInterp(L = 100):
     plt.savefig("EulerianInterp.svg", bbox_inches = 'tight')
 
 def SyntheticResults():
-    Curves = ['VivianiFigure8', 'TSCubic', 'TorusKnot23', 'TorusKnot35', 'PinchedCircle', 'Lissajous32', 'Lissajous54', 'ConeHelix', 'Epicycloid1_3']
-    Curves3D = ['VivianiFigure8', 'TorusKnot23', 'TorusKnot35','ConeHelix']
     Types = ['GTW', 'IMW', 'DTW', 'DDTW', 'CTW', 'IBDTW', 'IBDTWN']
+    Curves = {}
+    Curves['VivianiFigure8'] = lambda t: getVivianiFigure8(0.5, t)
+    Curves['TSCubic'] = lambda t: getTschirnhausenCubic(1, t)
+    Curves['TorusKnot23'] = lambda t: getTorusKnot(2, 3, t)
+    Curves['TorusKnot35'] = lambda t: getTorusKnot(3, 5, t)
+    Curves['PinchedCircle'] = lambda t: getPinchedCircle(t)
+    Curves['Lissajous32'] = lambda t: getLissajousCurve(1, 1, 3, 2, 0, t)
+    Curves['Lissajous54'] = lambda t: getLissajousCurve(1, 1, 5, 4, 0, t)
+    Curves['ConeHelix'] = lambda t: getConeHelix(1, 16, t)
+    Curves['Epicycloid'] = lambda t: getEpicycloid(1.5, 0.5, t)
 
     AllErrors = {}
     for t in Types:
@@ -518,7 +527,26 @@ def SyntheticResults():
     for i in range(len(Types)):
         X[:, i] = AllErrors[Types[i]]
 
-    plt.figure(figsize=(6, 3))
+    plt.figure(figsize=(12*0.8, 4*0.8))
+    k = 0
+    t = np.linspace(0, 1, 256)
+    c = plt.get_cmap('Spectral')
+    C = c(np.arange(256))
+    for curve in Curves:
+        Y = Curves[curve](t)
+        i = int(k%3)
+        j = int(k/3)
+        if Y.shape[1] == 3:
+            ax = plt.subplot2grid((3, 7), (i, j), projection = '3d')
+            ax.scatter(Y[:, 0], Y[:, 1], Y[:, 2], c = C)
+        else:
+            plt.subplot2grid((3, 7), (i, j))
+            plt.scatter(Y[:, 0], Y[:, 1], 20, c = C)
+        plt.axis('equal')
+        plt.axis('off')
+        plt.title(curve)
+        k += 1
+    plt.subplot2grid((3, 7), (0, 3), colspan = 4, rowspan = 3)
     plt.boxplot(X, labels = Types)
     plt.yscale('log')
     #plt.ylim([0, 50])
@@ -586,6 +614,6 @@ if __name__ == '__main__':
     #Figure8InterpNormalization(100)
     #EulerianInterp(100)
     SyntheticResults()
-    WeizmannResults()
-    BUResults()
-    ClosedLoopResults()
+    #WeizmannResults()
+    #BUResults()
+    #ClosedLoopResults()
