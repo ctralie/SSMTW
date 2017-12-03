@@ -361,10 +361,10 @@ class SkeletonAnimator(object):
 
         glPushMatrix()
         glTranslatef(P1[0], P1[1], P1[2])
-        glutSolidSphere(0.8,20,20)
+        glutSolidSphere(1.6,20,20)
         glPopMatrix()
 
-        glLineWidth(6)
+        glLineWidth(12)
         glBegin(GL_LINES)
         glVertex3f(P1[0], P1[1], P1[2])
         glVertex3f(P2[0], P2[1], P2[2])

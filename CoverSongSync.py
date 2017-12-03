@@ -53,6 +53,8 @@ if __name__ == '__main__':
     zoom = 1
     filename1 = "MJ.mp3"
     filename2 = "AAF.mp3"
+    Fs = 22050
+    """
     print "Loading %s..."%filename1
     (XAudio1, Fs) = getAudioLibrosa(filename1)
     print "Loading %s..."%filename2
@@ -60,6 +62,7 @@ if __name__ == '__main__':
 
 
     initParallelAlgorithms()
+    """
     D1 = sio.loadmat("D1.mat")["D"]
     D2 = sio.loadmat("D2.mat")["D"]
     
@@ -82,14 +85,26 @@ if __name__ == '__main__':
 
     (D2, D1) = matchSSMDist(D2, D1)
     
-    plt.subplot(221)
-    plt.imshow(D1, cmap = 'afmhot', interpolation = 'none')
-    plt.subplot(222)
-    plt.imshow(D2, cmap = 'afmhot', interpolation = 'none')
-    plt.subplot(223)
-    plt.plot(D1[0, :])
-    plt.plot(D2[0, :])
-    plt.show()
+    pD1 = scipy.ndimage.interpolation.zoom(D1, 0.2)
+    pD2 = scipy.ndimage.interpolation.zoom(D2, 0.2)
+    floor = 1e-3
+    pD1[pD1 < floor] = floor
+    pD2[pD2 < floor] = floor
+    pD1 = np.log(pD1/floor)
+    pD2 = np.log(pD2/floor)
+    
+    fac = (1.0/0.2)*float(hopSize*winFac)/Fs
+    plt.figure(figsize=(12, 3))
+    plt.subplot(131)
+    plt.imshow(pD1, extent = (0, pD1.shape[0]*fac, pD1.shape[1]*fac, 0), cmap = 'afmhot', interpolation = 'none')
+    plt.xlabel("Time (Sec)")
+    plt.ylabel("Time (Sec)")
+    plt.title("Michael Jackson")
+    plt.subplot(132)
+    plt.imshow(pD2, extent = (0, pD2.shape[0]*fac, pD2.shape[1]*fac, 0), cmap = 'afmhot', interpolation = 'none')
+    plt.title("Alien Ant Farm")
+    plt.xlabel("Time (Sec)")
+    plt.ylabel("Time (Sec)")
     
     """
     CSWM = doIBDTWGPU(D1, D2, returnCSM = True)
@@ -117,11 +132,18 @@ if __name__ == '__main__':
     CSWM = Saved['CSWM']
     path = Saved['path']
     
-    path = makePathStrictlyIncrease(path)
-    plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'none')
-    plt.scatter(path[:, 1], path[:, 0])
-    plt.show()
+    #path = makePathStrictlyIncrease(path)
     
+    fac = float(hopSize*winFac)/Fs
+    plt.subplot(133)
+    plt.imshow(CSWM.T, extent = (0, CSWM.shape[0]*fac, CSWM.shape[1]*fac, 0), cmap = 'afmhot', interpolation = 'none')
+    plt.scatter(path[:, 0]*fac, path[:, 1]*fac, 5, 'm', edgecolor = 'none')
+    plt.title("PCSWM")
+    plt.ylabel("AAF Time (sec)")
+    plt.xlabel("MJ Time (sec)")
+    plt.savefig("CoverSongAlignment.png", bbox_inches = 'tight', dpi = 200)
+    
+    """
     XFinal = np.array([[0, 0]])
     fileprefix = ""
     for i in range(path.shape[0]-1):
@@ -153,6 +175,7 @@ if __name__ == '__main__':
         XFinal = np.concatenate((XFinal, X))
     
     sio.wavfile.write("Synced.wav", Fs, XFinal)
+    """
 
     
     

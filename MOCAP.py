@@ -41,10 +41,10 @@ def MOCAPJumpingJacksExample(doPartial = True, doInterpolated = False):
     DQE = getSSM(XQE.T)
 
     #Load in Weizmann walking mask
-    #(I, IDims) = loadImageIOVideo("MOCAP/jumpingjackscropped.avi")
-    #I = I[25::, :]
-    (I, IDims) = loadImageIOVideo("MOCAP/jumpingjacks2men.ogg")
-    I = I[0:70]
+    (I, IDims) = loadImageIOVideo("MOCAP/jumpingjackscropped.avi")
+    I = I[25::, :]
+    #(I, IDims) = loadImageIOVideo("MOCAP/jumpingjacks2mencropped.avi")
+    #I = I[0:70]
     #I = I[0:int(I.shape[0]/2), :]
     
     if doInterpolated:
@@ -112,13 +112,25 @@ def MOCAPJumpingJacksExample(doPartial = True, doInterpolated = False):
     plt.clf()
     plt.subplot(2, 2, 1)
     plt.imshow(DQ, cmap = 'afmhot', interpolation = 'nearest')
+    plt.xlabel("Frame Number")
+    plt.ylabel("Frame Number")
+    plt.title("MOCAP Quaternion SSM")
     plt.subplot(2, 2, 2)
     plt.imshow(DV, cmap = 'afmhot', interpolation = 'nearest')
+    plt.xlabel("Frame Number")
+    plt.ylabel("Frame Number")
+    plt.title("Video Pixel SSM")
     plt.subplot(2, 2, 3)
     plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
+    plt.xlabel("MOCAP Frame Number")
+    plt.ylabel("Video Frame Number") 
+    plt.title("CSWM")
     plt.subplot(2, 2, 4)
     plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
     plt.scatter(path[:, 1], path[:, 0], 5, 'c', edgecolor = 'none')
+    plt.xlabel("MOCAP Frame Number")
+    plt.ylabel("Video Frame Number") 
+    plt.title("CSWM + Warping Path")
 
     path = projectPath(path, CSWM.shape[0], CSWM.shape[1], 1)
 
@@ -128,27 +140,30 @@ def MOCAPJumpingJacksExample(doPartial = True, doInterpolated = False):
     plt.figure(figsize=(15, 5))
     for i in range(path.shape[0]):
         plt.clf()
-        plt.subplot(1, 3, 1)
+        plt.subplot(131)
         F = I[path[i, 1], :]
         F = np.reshape(F, IDims)
         plt.imshow(F)
-        plt.title("Frame %i"%path[i, 1])
+        plt.title("Video Frame %i"%path[i, 1])
         plt.axis("off")
 
-        plt.subplot(1, 3, 2)
+        plt.subplot(132)
         F = IM[path[i, 0], :]
         F = np.reshape(F, IMDims)
         plt.imshow(F)
         plt.axis('off')
-        plt.title("Frame %i"%path[i, 0])
-
+        plt.title("MOCAP Frame %i"%path[i, 0])
+        
         plt.subplot(133)
         plt.imshow(CSWM, aspect = 'auto', cmap = 'afmhot', interpolation = 'nearest')
         plt.scatter(path[:, 1], path[:, 0], 5, 'c', edgecolor = 'none')
         plt.scatter(path[i, 1], path[i, 0], 30, 'm')
+        plt.xlabel("MOCAP Frame")
+        plt.ylabel("Video Frame")
+        plt.title("CSWM / Warping Path")
 
         plt.savefig("MOCAPAligned%i.png"%i, bbox_inches = 'tight')
 
 if __name__ == '__main__':
     initParallelAlgorithms()
-    MOCAPJumpingJacksExample(doPartial = False, doInterpolated = False)
+    MOCAPJumpingJacksExample(doPartial = False, doInterpolated = True)

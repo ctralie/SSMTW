@@ -178,4 +178,4 @@ def runAlignmentExperiments(eng, seed, K = 10, NPerFace = 10, doPlot = False):
 if __name__ == '__main__':
     initParallelAlgorithms()
     eng = initMatlabEngine()
-    runAlignmentExperiments(eng, 1, K = 2, NPerFace = 10, doPlot = True)
+    runAlignmentExperiments(eng, 1, K = 2, NPerFace = 10, doPlot = False)

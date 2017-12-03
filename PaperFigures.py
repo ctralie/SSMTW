@@ -526,8 +526,9 @@ def SyntheticResults():
     X = np.zeros((N, len(AllErrors)))
     for i in range(len(Types)):
         X[:, i] = AllErrors[Types[i]]
-
-    plt.figure(figsize=(12*0.8, 4*0.8))
+    
+    fac = 0.5
+    plt.figure(figsize=(fac*12, fac*4))
     k = 0
     t = np.linspace(0, 1, 256)
     c = plt.get_cmap('Spectral')
@@ -562,8 +563,9 @@ def WeizmannResults():
     X = np.zeros((N, len(Types)))
     for i in range(len(Types)):
         X[:, i] = AllErrors["P%s"%Types[i]].flatten()
-
-    plt.figure(figsize=(8, 3))
+    
+    fac = 0.8
+    plt.figure(figsize=(fac*4, fac*3))
     plt.boxplot(X, labels = Types)
     plt.ylim([0, 7])
     #plt.ylim([0.1, 10])
@@ -581,7 +583,8 @@ def BUResults():
     for i in range(len(Types)):
         X[:, i] = AllErrors["P%s"%Types[i]].flatten()
     
-    plt.figure(figsize=(8, 3))
+    fac = 0.8
+    plt.figure(figsize=(fac*4, fac*3))
     plt.boxplot(X, labels = Types)
     #plt.yscale('log')
     plt.xlabel("Alignment Algorithm")
@@ -592,7 +595,7 @@ def BUResults():
 def ClosedLoopResults():
     X = sio.loadmat("Results/ClosedLoops.mat")['Scores'].flatten()
     
-    plt.figure(figsize=(8, 3))
+    plt.figure(figsize=(6, 1))
     #plt.boxplot(X)
     #plt.yscale('log')
     #plt.ylabel("Alignment Error")
@@ -600,10 +603,12 @@ def ClosedLoopResults():
     bins = np.logspace(np.min(np.log10(X)), np.max(np.log10(X)), 50)
     
     plt.hist(X, bins = bins)
+    plt.xlim([0.1, 100])
     plt.gca().set_xscale("log")
 
     plt.title("Closed Loop Alignment Errors")
     plt.xlabel("Alignment Errors")
+    plt.ylabel("Counts")
     plt.savefig("ClosedLoops.svg", bbox_inches = 'tight')
 
 if __name__ == '__main__':
@@ -614,6 +619,6 @@ if __name__ == '__main__':
     #Figure8InterpNormalization(100)
     #EulerianInterp(100)
     SyntheticResults()
-    #WeizmannResults()
-    #BUResults()
-    #ClosedLoopResults()
+    WeizmannResults()
+    BUResults()
+    ClosedLoopResults()

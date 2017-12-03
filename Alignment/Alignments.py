@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import scipy.io as sio
 import Alignment._SequenceAlignment as SAC
 from Alignment.AlignmentTools import *
+from Alignment.MergeTree import *
 import Alignment
 from multiprocessing import Pool as PPool
 import time
@@ -90,13 +91,11 @@ def DTWCSM(CSM, doBacktrace = True):
             dul = d + D[i-1, j-1]
             dl = d + D[i, j-1]
             du = d + D[i-1, j]
-            D[i, j] = min(min(dul, dl), du)
-            if dul == D[i, j]:
-                backpointers[(i, j)].append([i-1, j-1, False])
-            if dl == D[i, j]:
-                backpointers[(i, j)].append([i, j-1, False])
-            if du == D[i, j]:
-                backpointers[(i, j)].append([i-1, j, False])
+            arr = np.array([dul, dl, du])
+            idx = np.argmin(arr)
+            D[i, j] = arr[idx]
+            opts = [[i-1, j-1, False], [i, j-1, False], [i-1, j, False]]
+            backpointers[(i, j)].append(opts[idx])
     path = []
     if doBacktrace:
         Backtrace(backpointers, (M, N), path) #Recursive backtrace from the end
@@ -173,7 +172,7 @@ def doIBDTWHelper(args):
 
 def doIBDTW(SSMA, SSMB, NThreads = 8, Verbose = False):
     """
-    Do partial isometry blind dynamic time warping between two
+    Do isometry blind dynamic time warping between two
     self-similarity matrices
     :param SSMA: MXM self-similarity matrix
     :param SSMB: NxN self-similarity matrix
@@ -185,7 +184,6 @@ def doIBDTW(SSMA, SSMB, NThreads = 8, Verbose = False):
     M = SSMA.shape[0]
     N = SSMB.shape[0]
     D = np.zeros((M, N))
-    parpool = None
     if NThreads > 1:
         if not Alignment.parpool:
             Alignment.parpool = PPool(NThreads)
@@ -200,6 +198,57 @@ def doIBDTW(SSMA, SSMB, NThreads = 8, Verbose = False):
         if Verbose:
             print("Finished row %i of %i"%(i, M))
     return D
+
+def doIBDTWMergeTreesHelper(args):
+    (x, res) = args
+    (MT, PS, I) = mergeTreeFrom1DTimeSeries(x)
+    ret = getPersistenceImage(I, [-0.1, 1.1, -0.1, 1.1], res, psigma = res*2)
+    return ret['PI'].flatten()
+
+def doIBDTWMergeTrees(SSMA, SSMB, res, NThreads = 8, Verbose = False):
+    """
+    Do a version of isometry blind time warping between SSMs
+    which uses merge trees as a proxy for constrained DTW
+    between each pair of rows
+    :param SSMA: MXM self-similarity matrix
+    :param SSMB: NxN self-similarity matrix
+    :param res: Width of each pixel in the persistence image
+    :param NThreads: How many threads to use in parallelization of
+        row computation of CSWM
+    :param Verbose: Whether or not to print which row is being aligned
+    :returns {'X': An MxNPixels array of persistence images for SSM A
+              'Y': An NxNPixels array of persistence images for SSM B
+              'D': MxN cross-similarity matrix}
+    """
+    if NThreads > 1:
+        if not Alignment.parpool:
+            Alignment.parpool = PPool(NThreads)
+    #Make a dummy persistence image to figure out resolution
+    ret = getPersistenceImage(np.array([[0, 0]]), [-0.1, 1.1, -0.1, 1.1], res)
+    PIDims = ret['PI'].shape
+    M = SSMA.shape[0]
+    N = SSMB.shape[0]
+    if NThreads > 1:
+        #Turn SSM rows into tuples
+        SSMATup = tuple([SSMA[i, :] for i in range(M)])
+        SSMBTup = tuple([SSMB[i, :] for i in range(N)])
+        args = zip(SSMATup, M*[res])
+        X = Alignment.parpool.map(doIBDTWMergeTreesHelper, args)
+        args = zip(SSMBTup, N*[res])
+        Y = Alignment.parpool.map(doIBDTWMergeTreesHelper, args)
+    else:
+        X = []
+        for i in range(M):
+            X.append(doIBDTWMergeTreesHelper((SSMA[i, :], res)))
+        Y = []
+        for i in range(N):
+            Y.append(doIBDTWMergeTreesHelper((SSMB[i, :], res)))
+    X = np.array(X)
+    Y = np.array(Y)
+    D = getCSM(X, Y)
+    return {'X':X, 'Y':Y, 'D':D, 'PIDims':PIDims}
+    
+
 
 def SMWat(CSM, matchFunction, hvPenalty = -0.2, backtrace = False, backidx = [], animate = False):
     """

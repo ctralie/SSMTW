@@ -7,16 +7,17 @@ from Alignment.AlignmentTools import *
 from Alignment.Alignments import *
 from Alignment.DTWGPU import *
 from Alignment.ctw.CTWLib import *
-from Alignment.SyntheticCurves import applyRandomRigidTransformation
+from Alignment.SyntheticCurves import *
 from PaperFigures import makeColorbar
 
-def LoopExperiments(SamplesPerCurve, doPlot = False):
+def LoopExperiments(SamplesPerCurve, Kappa = 0.1, NRelMag = 2, NBumps = 2, doPlot = False):
     np.random.seed(SamplesPerCurve)
     if doPlot:
         plt.figure(figsize=(15, 5))
     NClasses = 7
     CurvesPerClass = 20
     Scores = np.zeros((NClasses, CurvesPerClass, SamplesPerCurve))
+    distortionRatios = []
     for i in range(1, NClasses+1):
         for j in range(1, CurvesPerClass+1):
             for k in range(SamplesPerCurve):
@@ -25,7 +26,13 @@ def LoopExperiments(SamplesPerCurve, doPlot = False):
                 x = x[0::3, :]
                 N = x.shape[0]
                 circshift = np.random.randint(N)
-                y = np.roll(x, circshift, 0)
+                yo = np.roll(x, circshift, 0)
+                
+                (y, Bumps) = addRandomBumps(yo, Kappa, NRelMag, NBumps)
+                diff = np.sqrt(np.sum((yo-y)**2, 1))
+                GHDist = np.max(diff)
+                D = getCSM(y, y)
+                distortionRatios.append(GHDist/np.max(D))
 
                 WarpDict = getWarpDictionary(N)
                 t2 = getWarpingPath(WarpDict, 4, False)
@@ -56,7 +63,7 @@ def LoopExperiments(SamplesPerCurve, doPlot = False):
                 path[:, 1] = np.mod(path[:, 1], len(y))
                 score = computeAlignmentError(PGT, path, etype = 2)
                 Scores[i-1, j-1, k] = score
-                sio.savemat("ClosedLoops.mat", {"Scores":Scores})
+                sio.savemat("ClosedLoops.mat", {"Scores":Scores, "distortionRatios":np.array(distortionRatios)})
                 if doPlot:
                     pathProj = projectPath(path, PCSWM.shape[0], PCSWM.shape[1], 1)
                     #Walk along projected path until we've gone N samples along
@@ -92,4 +99,4 @@ def LoopExperiments(SamplesPerCurve, doPlot = False):
 
 if __name__ == '__main__':
     initParallelAlgorithms()
-    LoopExperiments(10)
+    LoopExperiments(30, doPlot = False)

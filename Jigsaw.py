@@ -161,7 +161,8 @@ if __name__ == '__main__':
     path2 = projectPath(P2, M, N)
     res2 = getProjectedPathParam(path2)
 
-    plt.figure(figsize=(11, 10))
+    plt.figure(figsize=(13, 10*0.66))
+    """
     plt.subplot(321)
     plt.scatter(XL[:, 0], XL[:, 1], 20, np.arange(M), cmap = 'Reds', edgecolor = 'none')
     plt.scatter(XR[:, 0], XR[:, 1], 20, np.arange(N), cmap = 'Blues', edgecolor = 'none')
@@ -179,11 +180,12 @@ if __name__ == '__main__':
     plt.scatter(-4*np.ones(M), np.arange(M), 80, np.arange(M), edgecolor = 'none', cmap = 'Reds')
     plt.xlim([-7, N])
     plt.ylim([M, -7])
-    plt.title("PCSSM")
+    plt.title("PCSWM")
+    """
 
 
 
-    plt.subplot(323)
+    plt.subplot(221)
     plt.scatter(XL[:, 0], XL[:, 1], 20, 'k')
     plt.scatter(XL[path[0, 0]:path[-1, 0]+1, 0], XL[path[0, 0]:path[-1, 0]+1, 1], 20, c = res['C1'], edgecolor = 'none')
     plt.scatter(XR[:, 0], XR[:, 1], 20, 'k')
@@ -194,18 +196,18 @@ if __name__ == '__main__':
     ax = plt.gca()
     ax.set_axis_bgcolor((0.7, 0.7, 0.7))
 
-    plt.subplot(324)
+    plt.subplot(222)
     plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
     plt.xlim([-2, N])
     plt.ylim([CSWM.shape[0], -2])
-    plt.title("PCSSM Backtrace 1, Score = %.3g"%score1)
+    plt.title("PCSWM Backtrace 1, Score = %.3g"%score1)
     plt.scatter(P[:, 1], P[:, 0], 30, 'k')
     plt.scatter(path[:, 1], path[:, 0], 20, c = res['C2'], edgecolor = 'none')
 
 
 
 
-    plt.subplot(325)
+    plt.subplot(223)
     plt.scatter(XL[:, 0], XL[:, 1], 20, 'k')
     plt.scatter(XL[path2[0, 0]:path2[-1, 0]+1, 0], XL[path2[0, 0]:path2[-1, 0]+1, 1], 20, c = res2['C1'], edgecolor = 'none')
     plt.scatter(XR[:, 0], XR[:, 1], 20, 'k')
@@ -216,12 +218,14 @@ if __name__ == '__main__':
     ax = plt.gca()
     ax.set_axis_bgcolor((0.7, 0.7, 0.7))
 
-    plt.subplot(326)
+    plt.subplot(224)
     plt.imshow(CSWM, cmap = 'afmhot', interpolation = 'nearest')
     plt.xlim([-2, N])
     plt.ylim([CSWM.shape[0], -2])
-    plt.title("PCSSM Backtrace 2, Score = %.3g"%score2)
+    plt.title("PCSWM Backtrace 2, Score = %.3g"%score2)
     plt.scatter(P2[:, 1], P2[:, 0], 30, 'k')
     plt.scatter(path2[:, 1], path2[:, 0], 20, c = res2['C2'], edgecolor = 'none')
+    plt.xlabel("Piece 1")
+    plt.ylabel("Piece 2")
 
     plt.savefig("Jigsaw.svg", bbox_inches = 'tight')

@@ -438,8 +438,8 @@ if __name__ == '__main__':
     initParallelAlgorithms()
     #plotAlignedWalkingVideos()
     #alignWalkingVideos(eng)
-    #runAlignmentExperiments(eng, NPerVideo = 100)
-    partialAlignWalkingVideos(crossModal = True)
+    runAlignmentExperiments(eng, NPerVideo = 100, doPlot = False)
+    #partialAlignWalkingVideos(crossModal = True)
 
 if __name__ == '__main__2':
     X = sio.loadmat(WEIPATH + "/mask.mat")
