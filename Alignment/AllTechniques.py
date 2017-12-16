@@ -5,7 +5,7 @@ from Alignment.Alignments import *
 from Alignment.ctw.CTWLib import *
 import time
 
-def getIBDTWAlignment(X1, X2, L = 100, useGPU = True, Verbose = False, doPlot = False, dBPlot = True):
+def getIBDTWAlignment(X1, X2, L = 100, useGPU = True, Verbose = False, doPlot = False, dBPlot = False, mergeTree = False):
     """
     Get alignment path for SSMs and ranked SSMs
     :param X1: Euclidean point cloud 1
@@ -21,17 +21,22 @@ def getIBDTWAlignment(X1, X2, L = 100, useGPU = True, Verbose = False, doPlot = 
     D2 = getSSM(X2)
     (D1N1, D2N1) = matchSSMDist(D1, D2, L)
     (D2N2, D1N2) = matchSSMDist(D2, D1, L)
-    if useGPU:
-        from Alignment.DTWGPU import doIBDTWGPU
-        D = doIBDTWGPU(D1, D2, returnCSM = True)
-        DNorm1 = doIBDTWGPU(D1N1, D2N1, returnCSM = True)
-        DNorm2 = doIBDTWGPU(D1N2, D2N2, returnCSM = True)
+    if mergeTree:
+        D = doIBDTWMergeTrees(D1, D2, 0.01)['D']
+        DNorm1 = doIBDTWMergeTrees(D1N1, D2N1, 0.01)['D']
+        DNorm2 = doIBDTWMergeTrees(D1N2, D2N2, 0.01)['D']
     else:
-        D = doIBDTW(D1, D2)
-        DNorm1 = doIBDTW(D1N1, D2N1)
-        DNorm2 = doIBDTW(D1N2, D2N2)
-    if Verbose:
-        print("Elapsed Time GPU: %g"%(time.time() - tic))
+        if useGPU:
+            from Alignment.DTWGPU import doIBDTWGPU
+            D = doIBDTWGPU(D1, D2, returnCSM = True)
+            DNorm1 = doIBDTWGPU(D1N1, D2N1, returnCSM = True)
+            DNorm2 = doIBDTWGPU(D1N2, D2N2, returnCSM = True)
+            if Verbose:
+                print("Elapsed Time GPU: %g"%(time.time() - tic))
+        else:
+            D = doIBDTW(D1, D2)
+            DNorm1 = doIBDTW(D1N1, D2N1)
+            DNorm2 = doIBDTW(D1N2, D2N2)
 
     (DAll, CSSM, backpointers, path) = DTWCSM(D)
     (DAllN, CSSM1, backpointersN, pathN12) = DTWCSM(DNorm1)
@@ -121,6 +126,7 @@ def getIBDTWAlignment(X1, X2, L = 100, useGPU = True, Verbose = False, doPlot = 
 def doAllAlignments(eng, X1, X2, t2, doPCA = 1, useGPU = True, drawPaths = False, drawAlignmentScores = False):
     tic = time.time()
     (PIBDTW, PIBDTWN) = getIBDTWAlignment(X1, X2, useGPU = useGPU)
+    (PIBDTWMT, PIBDTWMTN) = getIBDTWAlignment(X1, X2, mergeTree = True)
     timeIBDTW = time.time() - tic
     tic = time.time()
     Ps = getCTWAlignments(eng, X1, X2, doPCA = doPCA)
@@ -128,6 +134,7 @@ def doAllAlignments(eng, X1, X2, t2, doPCA = 1, useGPU = True, drawPaths = False
     print("IBDTW Time: %g, Others Time: %g"%(timeIBDTW, timeOthers))
     Ps['PIBDTW'] = PIBDTW
     Ps['PIBDTWN'] = PIBDTWN
+    Ps['PIBDTWMTN'] = PIBDTWMTN
 
     #Ground truth path
     t2 = t2*(X1.shape[0]-1)
@@ -144,7 +151,7 @@ def doAllAlignments(eng, X1, X2, t2, doPCA = 1, useGPU = True, drawPaths = False
             plt.show()
         errors[ptype] = err
 
-    types = ['PGTW', 'PIBDTW', 'PIBDTWN', 'PCTW', 'PDTW', 'PDDTW', 'PIMW']
+    types = ['PGTW', 'PIBDTW', 'PIBDTWN', 'PIBDTWMTN', 'PCTW', 'PDTW', 'PDDTW', 'PIMW']
     if drawPaths:
         plt.hold(True)
         for i in range(len(types)):

@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from Alignment import Alignments, AlignmentTools, DTWGPU, SyntheticCurves, AllTechniques
 
 useGPU = True
+mergeTree = True
 
 if useGPU:
     #Must compile CUDA kernels before doing anything
@@ -25,7 +26,7 @@ X2 = SyntheticCurves.applyRandomRigidTransformation(X2)
 
 #Align curves with IBDTW
 tic = time.time()
-(path, pathN) = AllTechniques.getIBDTWAlignment(X1, X2, useGPU = useGPU, doPlot = True)
+(path, pathN) = AllTechniques.getIBDTWAlignment(X1, X2, useGPU = useGPU, doPlot = True, mergeTree = mergeTree)
 print("Elapsed Time: %g"%(time.time() - tic))
 plt.show()
 
