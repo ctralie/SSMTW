@@ -5,9 +5,43 @@ import scipy.misc
 import sys
 from SlidingWindowVideoTDA.VideoTools import *
 from Alignment.AlignmentTools import *
-from Alignment.DTWGPU import *
-from Alignment.AllTechniques import *
+from SimilarityFusion import *
+from RQA import *
+import scipy.ndimage.morphology
 import time
+import os
+from multiprocessing import Pool as PPool
+
+def imresize(D, dims, kind='cubic', use_scipy=False):
+    """
+    Resize a floating point image
+    Parameters
+    ----------
+    D : ndarray(M1, N1)
+        Original image
+    dims : tuple(M2, N2)
+        The dimensions to which to resize
+    kind : string
+        The kind of interpolation to use
+    use_scipy : boolean
+        Fall back to scipy.misc.imresize.  This is a bad idea
+        because it casts everything to uint8, but it's what I
+        was doing accidentally for a while
+    Returns
+    -------
+    D2 : ndarray(M2, N2)
+        A resized array
+    """
+    if use_scipy:
+        return scipy.misc.imresize(D, dims)
+    else:
+        M, N = dims
+        x1 = np.array(0.5 + np.arange(D.shape[1]), dtype=np.float32)/D.shape[1]
+        y1 = np.array(0.5 + np.arange(D.shape[0]), dtype=np.float32)/D.shape[0]
+        x2 = np.array(0.5 + np.arange(N), dtype=np.float32)/N
+        y2 = np.array(0.5 + np.arange(M), dtype=np.float32)/M
+        f = scipy.interpolate.interp2d(x1, y1, D, kind=kind)
+        return f(x2, y2)
 
 def getZNorm(X):
     Y = X - np.mean(X, 0)[None, :]
@@ -44,14 +78,8 @@ def getMFCCsLibrosa(XAudio, Fs, winSize, hopSize = 512, NBands = 40, fmax = 8000
     S = librosa.core.stft(XAudio, winSize, hopSize)
     M = librosa.filters.mel(Fs, winSize, n_mels = NBands, fmax = fmax)
 
-    #if usecmp:
-    #    #Hynek's magical equal-loudness-curve formula
-    #    fsq = M**2
-    #    ftmp = fsq + 1.6e5
-    #    eql = ((fsq/ftmp)**2)*((fsq + 1.44e6)/(fsq + 9.61e6))
-
     X = M.dot(np.abs(S))
-    X = librosa.core.logamplitude(X)
+    X = librosa.core.amplitude_to_db(X)
     X = np.dot(librosa.filters.dct(NMFCC, X.shape[0]), X) #Make MFCC
     #Do liftering
     coeffs = np.arange(NMFCC)**lifterexp
@@ -63,135 +91,223 @@ def getMFCCsLibrosa(XAudio, Fs, winSize, hopSize = 512, NBands = 40, fmax = 8000
         X = getZNorm(X)
     return X
 
-def resizeVideo(I, IDims, NewDims, doPlot = False):
+def resizeVideo(I, IDims, NewDims, do_plot = False):
     INew = []
     for i in range(I.shape[0]):
         F = np.reshape(I[i, :], IDims)
         F = rgb2gray(F)
         F = 1.0*scipy.misc.imresize(F, NewDims)
-        if doPlot:
+        if do_plot:
             plt.imshow(F)
             plt.show()
         INew.append(F.flatten())
     INew = np.array(INew)
-    print("I.dtype = ", I.dtype)
-    print("INew.dtype = ", INew.dtype)
     return INew
 
-def runAlignmentExperiments(eng, seed, K, NSubjects, NPerSubject, doPlot = False):
+def getAVSSMs(s, i, ssmdim, K, do_plot = False):
     """
-    Run experiments randomly warping the audio and trying to align it to
-    the video
+    Parameters
+    ----------
+    s : int
+        Subject number
+    i : int
+        Sequence number (between 1-30)
+    ssmdim : int
+        Resized SSM dimension to rescale audio and video to same time domain
+    K : int
+        Number of nearest neighbors for similarity network fusion
     """
-    np.random.seed(seed)
-    AllErrors = {}
-    for s in range(1, NSubjects+1):
-        for i in range(1, NPerSubject+1):
-            print("Doing subject %i trial %i..."%(s, i))
-            filename = "OuluVS2/cropped_mouth_mp4_digit/%i/1/s%i_v1_u%i.mp4"%(s, s, i)
-            if not os.path.exists(filename):
-                continue
-            (I1, IDims) = loadImageIOVideo(filename)
-            I1 = getPCAVideo(I1)
-            filename = "OuluVS2/cropped_audio_dat/s%i_u%i.wav"%(s, i)
-            if not os.path.exists(filename):
-                continue
-            (XAudio, Fs) = getAudioLibrosa(filename)
-            I2 = getMFCCsLibrosa(XAudio, Fs, 4096, int(Fs/30))
-
-            #[I1, _] = getTimeDerivative(I1, derivWin)
-            #[I2, _] = getTimeDerivative(I2, derivWin)
-            #I1 = getSlidingWindowVideo(I1, SWWin, 1, 1)
-            #I2 = getSlidingWindowVideo(I2, SWWin, 1, 1)
-            I1 = getZNorm(I1)
-            I2 = getZNorm(I2)
-            
-            WarpDict = getWarpDictionary(I2.shape[0])
-            t2 = getWarpingPath(WarpDict, K, False)
-            I2Warped = getInterpolatedEuclideanTimeSeries(I2, t2)
-            plt.clf()
-            (errors, Ps) = doAllAlignments(eng, I1, I2Warped, t2, drawPaths = doPlot)
-            if doPlot:
-                plt.savefig("Oulu%i_%i.svg"%(s, i))
-                plt.clf()
-                D1 = getSSM(I1)
-                D2 = getSSM(I2)
-                plt.subplot(121)
-                plt.imshow(D1, cmap = 'afmhot', interpolation = 'none')
-                plt.title("Video")
-                plt.subplot(122)
-                plt.imshow(D2, cmap = 'afmhot', interpolation = 'none')
-                plt.title("Audio")
-                plt.savefig("Oulu%i_%iSSM.png"%(s, i), bbox_inches = 'tight')
-                plt.clf()
-            types = errors.keys()
-            for t in types:
-                if not t in AllErrors:
-                    AllErrors[t] = np.inf*np.ones((NSubjects, NPerSubject))
-                AllErrors[t][s-1][i-1] = errors[t]
-            sio.savemat("OuluVs2Errors.mat", AllErrors)
-
-if __name__ == '__main__':
-    initParallelAlgorithms()
-    eng = initMatlabEngine()
-    runAlignmentExperiments(eng, 100, 4, 10, 30, True)
-
-if __name__ == '__main__2':
-    initParallelAlgorithms()
-    s = 2
-    i = 3
+    winSize = 4096
+    hopSize = 256
     filename = "OuluVS2/cropped_mouth_mp4_digit/%i/1/s%i_v1_u%i.mp4"%(s, s, i)
-    print(filename)
     (I1, IDims) = loadImageIOVideo(filename)
-    #I1 = resizeVideo(I1, IDims, (25, 50))
+    I1 = resizeVideo(I1, IDims, (25, 50))
     filename = "OuluVS2/cropped_audio_dat/s%i_u%i.wav"%(s, i)
-    print(filename)
     (XAudio, Fs) = getAudioLibrosa(filename)
-    I2 = getMFCCsLibrosa(XAudio, Fs, 4096, int(Fs/30))
+    XAudio = np.concatenate((XAudio, np.zeros(winSize-hopSize)))
+    I2 = getMFCCsLibrosa(XAudio, Fs, winSize, hopSize)
 
     #[I1, _] = getTimeDerivative(I1, 5)
     #[I2, _] = getTimeDerivative(I2, 5)
     I1 = getZNorm(I1)
     I2 = getZNorm(I2)
-
-    t = np.linspace(0, 1, I2.shape[0])
-    t2 = t**2
-    I2Orig = np.array(I2)
-    I2 = getInterpolatedEuclideanTimeSeries(I2, t2)
     
     D1 = getSSM(I1)
-    D2 = getSSM(I2Orig)
-    plt.subplot(121)
-    plt.imshow(D1, cmap = 'afmhot', interpolation = 'none')
-    plt.title("Video")
-    plt.subplot(122)
-    plt.imshow(D2, cmap = 'afmhot', interpolation = 'none')
-    plt.title("Audio")
+    D2 = getSSM(I2)
+    D1 = imresize(D1, (ssmdim, ssmdim))
+    D2 = imresize(D2, (ssmdim, ssmdim))
+
+    D3 = doSimilarityFusion([D1, D2], K=K)
+
+    if do_plot:
+        pD3 = np.array(D3)
+        np.fill_diagonal(pD3, 0)
+        plt.subplot(331)
+        plt.imshow(D1, cmap = 'afmhot', interpolation = 'none')
+        plt.title("Video")
+        plt.subplot(332)
+        plt.imshow(D2, cmap = 'afmhot', interpolation = 'none')
+        plt.title("Audio")
+        plt.subplot(333)
+        plt.imshow(pD3, cmap = 'afmhot', interpolation = 'none')
+        plt.title("Fused")
+
+        Kappa = 0.1
+        pD1 = CSMToBinaryMutual(D1, Kappa)
+        pD2 = CSMToBinaryMutual(D2, Kappa)
+        pD3 = CSMToBinaryMutual(-pD3, Kappa)
+        plt.subplot(334)
+        plt.imshow(pD1, cmap = 'afmhot', interpolation = 'none')
+        plt.subplot(335)
+        plt.imshow(pD2, cmap = 'afmhot', interpolation = 'none')
+        plt.subplot(336)
+        plt.imshow(pD3, cmap = 'afmhot', interpolation = 'none')
+
+        pD1 = scipy.ndimage.morphology.distance_transform_edt(1-pD1)
+        pD2 = scipy.ndimage.morphology.distance_transform_edt(1-pD2)
+        pD3 = scipy.ndimage.morphology.distance_transform_edt(1-pD3)
+        plt.subplot(337)
+        plt.imshow(pD1, cmap = 'afmhot', interpolation = 'none')
+        plt.subplot(338)
+        plt.imshow(pD2, cmap = 'afmhot', interpolation = 'none')
+        plt.subplot(339)
+        plt.imshow(pD3, cmap = 'afmhot', interpolation = 'none')
     
-    plt.savefig("SSMs.svg", bbox_inches = 'tight')
-    plt.clf()
-    getIBDTWAlignment(I1, I2, doPlot = True)
-    for i in range(3):
-        plt.subplot(3, 3, 7+i)
-        plt.scatter(t*I2.shape[0], t2*I2.shape[0], edgecolor = 'none')
-    plt.savefig("OuluAligned.svg", bbox_inches = 'tight')
+    return np.concatenate((D1[:, :, None], D2[:, :, None], D3[:, :, None]), 2)
+
+def getSSMsHelper(args):
+    (subj, seq, ssmdim, K) = args
+    print(args)
+    return getAVSSMs(subj, seq, ssmdim, K)
+
+def writeWekaHeader(fout, NSeq = 30):
+    rqa = getRQAArr(getRQAStats(np.random.randn(10, 10) > 0, 5, 5))[1]
+    fout.write("@RELATION RQAs\n")
+    for r in rqa:
+        fout.write("@ATTRIBUTE %s real\n"%r)
+    labels = ["Seq%i"%i for i in range(1, NSeq+1)]
+    fout.write("@ATTRIBUTE sequence {")
+    labels = [l for l in labels]
+    for i in range(len(labels)):
+        fout.write(labels[i])
+        if i < len(labels)-1:
+            fout.write(",")
+    fout.write("}\n")
+    fout.write("@DATA\n")
+
+def doComparisonExperiments(NThreads = 8):
+    ssmdim = 400
+    K = int(ssmdim*0.1)
+    [I, J] = np.meshgrid(np.arange(ssmdim), np.arange(ssmdim))
+    NSeq = 30
+    NSubj = 52
+
+    parpool = None
+    if NThreads > -1:
+        parpool = PPool(NThreads)
+
+    if not os.path.exists("AllSSMs.mat"):
+        AllSSMs = [ [], [], [] ]
+        for seq in range(1, NSeq+1):
+            print("Getting SSMs for sequence %i of %i..."%(seq, NSeq))
+            res = []
+            #Skip subject 29 because data is missing for some reason
+            if NThreads > -1:
+                subjs = np.arange(1, NSubj+1)
+                subjs = np.concatenate((subjs[0:28], subjs[29::]))
+                args = zip(subjs, [seq]*NSubj, [ssmdim]*NSubj, [K]*NSubj)
+                res = parpool.map(getSSMsHelper, args)
+            else:
+                for subj in range(1, NSubj+1):
+                    if subj == 29:
+                        continue
+                    print(".")
+                    res.append(getSSMsHelper((subj, seq, ssmdim, K)))
+            for i in range(len(res)):
+                for k in range(res[0].shape[2]):
+                    D = res[i][:, :, k]
+                    AllSSMs[k].append(D[I > J])
+        VideoSSMs = np.array(AllSSMs[0])
+        AudioSSMs = np.array(AllSSMs[1])
+        FusedSSMs = np.array(AllSSMs[2])
+        sio.savemat("AllSSMs.mat", {"VideoSSMs":VideoSSMs, "AudioSSMs":AudioSSMs, "FusedSSMs":FusedSSMs})
+    else:
+        print("Loading SSMs...")
+        res = sio.loadmat("AllSSMs.mat")
+        print("Finished loading SSMs")
+        VideoSSMs, AudioSSMs, FusedSSMs = res['VideoSSMs'], res['AudioSSMs'], res['FusedSSMs']
+    if not os.path.exists("SSMsDist.mat"):
+        print("Getting Video Dists...")
+        DVideo = getCSM(VideoSSMs, VideoSSMs)
+        print("Getting Audio Dists...")
+        DAudio = getCSM(AudioSSMs, AudioSSMs)
+        print("Getting Fused DIsts...")
+        DFused = getCSM(FusedSSMs, FusedSSMs)
+        sio.savemat("SSMsDist.mat", {"DVideo":DVideo, "DAudio":DAudio, "DFused":DFused})
+    else:
+        res = sio.loadmat("SSMsDist.mat")
+        DVideo, DAudio, DFused = res['DVideo'], res['DAudio'], res['DFused']
+    AllRQAs = [[], [], []]
+    DRQAs = []
+    NSubj -= 1 #Skipping subject 29
+    for i, SSMs in enumerate([VideoSSMs, AudioSSMs, FusedSSMs]):
+        fout = open("RQA%i.arff"%i, "w")
+        writeWekaHeader(fout, NSeq)
+        for k in range(SSMs.shape[0]):
+            print("%i %i"%(i, k))
+            D = np.zeros((ssmdim, ssmdim))
+            D[I < J] = SSMs[k, :]
+            D = D + D.T
+            D = CSMToBinaryMutual(D, 0.2)
+            AllRQAs[i].append(getRQAArr(getRQAStats(D, 5, 5, do_norm = True))[0])
+            print(AllRQAs[i][-1])
+            for val in AllRQAs[i][-1]:
+                fout.write("%g, "%val)
+            fout.write("Seq%i\n"%(1+int(k)/NSubj))
+        AllRQAs[i] = np.array(AllRQAs[i])
+        DRQAs.append(getSSM(AllRQAs[i]))
+        fout.close()
+    [DVideoRQA, DAudioRQA, DFusedRQA] = DRQAs
+    sio.savemat("SSMsRQA.mat", {"DVideoRQA":DVideoRQA, "DAudioRQA":DAudioRQA, "DFusedRQA":DFusedRQA})
+
+def getPrecisionRecall(pD, NPerClass):
+    PR = np.zeros(NPerClass-1)
+    D = np.array(pD)
+    np.fill_diagonal(D, 0)
+    DI = np.array(np.argsort(D, 1), dtype=np.int64)
+    for i in range(DI.shape[0]):
+        pr = np.zeros(NPerClass-1)
+        recall = 0
+        for j in range(1, DI.shape[1]): #Skip the first point (don't compare to itself)
+            if DI[i, j]/NPerClass == i/NPerClass:
+                pr[recall] = float(recall+1)/j
+                recall += 1
+            if recall == NPerClass-1:
+                break
+        PR += pr
+    return PR/float(DI.shape[0])
+
+if __name__ == '__main__':
+    doComparisonExperiments()
+    res = sio.loadmat("SSMsDist.mat")
+    DVideo, DAudio, DFused = res['DVideo'], res['DAudio'], res['DFused']
+    res = sio.loadmat("SSMsRQA.mat")
+    DVideoRQA, DAudioRQA, DFusedRQA = res['DVideoRQA'], res['DAudioRQA'], res['DFusedRQA']
+    NPerClass = DVideo.shape[0]/30
+    AUROCs = []
+    for D in [DVideo, DAudio, DFused, DVideoRQA, DAudioRQA, DFusedRQA, np.random.rand(DVideo.shape[0], DVideo.shape[1])]:
+        PR = getPrecisionRecall(D, NPerClass)
+        plt.plot(PR)
+        AUROCs.append(np.mean(PR))
+    legend = ["VideoL2", "AudioL2", "FusedL2", "VideoRQA", "AudioRQA", "FusedRQA", "Random"]
+    legend = ["%s (%.3g)"%(s, a) for (s, a) in zip(legend, AUROCs)]
+    plt.legend(legend)
+    plt.show()
+
 
 if __name__ == '__main__2':
-    initParallelAlgorithms()
-    
-    for i in range(1, 31):
-        #Get Video SSM
-        (I, IDims) = loadImageIOVideo("OuluVS2/cropped_mouth_mp4_digit/1/1/s1_v1_u%i.mp4"%i)
-        t = np.linspace(0, 1, I.shape[0])
-        t = t**1.5
-        IWarped = getInterpolatedEuclideanTimeSeries(I, t)
-        
-        #Get Audio SSM
-        (XAudio, Fs) = getAudioLibrosa("OuluVS2/cropped_audio_dat/s1_u%i.wav"%i)
-        X = getMFCCsLibrosa(XAudio, Fs, 4096, int(Fs/30))
-        
-        print("I.shape = {}".format(I.shape))
-        print("X.shape = {}".format(X.shape))
-        getIBDTWAlignment(IWarped, X, doPlot = True)
-        plt.savefig("Oulu1_%i.svg"%i, bbox_inches = 'tight')
+    plt.figure(figsize=(12, 12))
+    for i in range(1, 30):
         plt.clf()
+        getAVSSMs(1, i, 400, 40, do_plot=True)
+        plt.savefig("SSMs%i.png"%i)
