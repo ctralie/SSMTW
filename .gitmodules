@@ -7,3 +7,6 @@
 [submodule "GeometricCoverSongs"]
 	path = GeometricCoverSongs
 	url = https://github.com/ctralie/GeometricCoverSongs.git
+[submodule "pytorch-CycleGAN-and-pix2pix"]
+	path = pytorch-CycleGAN-and-pix2pix
+	url = https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix.git

@@ -51,7 +51,7 @@ def getZNorm(X):
     return Y
 
 def getAudioLibrosa(filename):
-    r"""
+    """
     Use librosa to load audio
     :param filename: Path to audio file
     :return (XAudio, Fs): Audio in samples, sample rate
@@ -104,7 +104,7 @@ def resizeVideo(I, IDims, NewDims, do_plot = False):
     INew = np.array(INew)
     return INew
 
-def getAVSSMs(s, i, ssmdim, K, do_plot = False):
+def getAVSSMsFused(s, i, ssmdim, K, do_plot = False):
     """
     Parameters
     ----------
@@ -121,7 +121,7 @@ def getAVSSMs(s, i, ssmdim, K, do_plot = False):
     hopSize = 256
     filename = "OuluVS2/cropped_mouth_mp4_digit/%i/1/s%i_v1_u%i.mp4"%(s, s, i)
     (I1, IDims) = loadImageIOVideo(filename)
-    I1 = resizeVideo(I1, IDims, (25, 50))
+    I1 = resizeVideo(I1, IDims, (25, 25))
     filename = "OuluVS2/cropped_audio_dat/s%i_u%i.wav"%(s, i)
     (XAudio, Fs) = getAudioLibrosa(filename)
     XAudio = np.concatenate((XAudio, np.zeros(winSize-hopSize)))
@@ -175,10 +175,68 @@ def getAVSSMs(s, i, ssmdim, K, do_plot = False):
     
     return np.concatenate((D1[:, :, None], D2[:, :, None], D3[:, :, None]), 2)
 
+def makedret(I1, I2, ssmdim):
+    D1 = getSSM(getZNorm(I1)) / 2.0
+    D2 = getSSM(getZNorm(I2)) / 2.0
+
+    D1Resized = imresize(D1, (ssmdim, ssmdim))
+    D2Resized = imresize(D2, (ssmdim, ssmdim))
+
+    DRet = np.zeros((ssmdim, ssmdim*2))
+    DRet[:, 0:ssmdim] = D1Resized
+    DRet[:, ssmdim::] = D2Resized
+    DRet[DRet < 0] = 0
+    DRet[DRet > 1] = 1
+
+    DRet = DRet[:, :, None]
+    DRet = np.concatenate((DRet, DRet, DRet), 2)
+    return np.array(np.round(255*DRet), dtype = np.uint8)
+
+def getAVSSMsWarped(s, i, ssmdim, K, NWarps):
+    """
+    Parameters
+    ----------
+    s : int
+        Subject number
+    i : int
+        Sequence number (between 1-30)
+    ssmdim : int
+        Resized SSM dimension to rescale audio and video to same time domain
+    K : int
+        Number of basis elements in the warping path dictionary
+    NWarps : int
+        Number of warps to sample (including the unwarped image)
+    
+    Returns
+    -------
+    List of warped images, including the original
+    """
+    winSize = 4096
+    hopSize = 256
+    filename = "OuluVS2/cropped_mouth_mp4_digit/%i/1/s%i_v1_u%i.mp4"%(s, s, i)
+    (I1, IDims) = loadImageIOVideo(filename)
+    I1 = resizeVideo(I1, IDims, (25, 50))
+    filename = "OuluVS2/cropped_audio_dat/s%i_u%i.wav"%(s, i)
+    (XAudio, Fs) = getAudioLibrosa(filename)
+    XAudio = np.concatenate((XAudio, np.zeros(winSize-hopSize)))
+    I2 = getMFCCsLibrosa(XAudio, Fs, winSize, hopSize)
+    # Interpolate video so it has the same time resolution as audio
+    I1 = getInterpolatedEuclideanTimeSeries(I1, np.linspace(0, 1, I2.shape[0]))
+    Images = [makedret(I1, I2, ssmdim)]
+
+    WarpDict = getWarpDictionary(I1.shape[0])
+    for w in range(NWarps-1):
+        t = getWarpingPath(WarpDict, K, False)
+        I1Warped = getInterpolatedEuclideanTimeSeries(I1, t)
+        I2Warped = getInterpolatedEuclideanTimeSeries(I2, t)
+        Images.append(makedret(I1Warped, I2Warped, ssmdim))
+    return Images
+    
+
 def getSSMsHelper(args):
     (subj, seq, ssmdim, K) = args
     print(args)
-    return getAVSSMs(subj, seq, ssmdim, K)
+    return getAVSSMsFused(subj, seq, ssmdim, K)
 
 def writeWekaHeader(fout, NSeq = 30):
     rqa = getRQAArr(getRQAStats(np.random.randn(10, 10) > 0, 5, 5))[1]
@@ -287,7 +345,40 @@ def getPrecisionRecall(pD, NPerClass):
         PR += pr
     return PR/float(DI.shape[0])
 
-if __name__ == '__main__':
+def getWarpedTrainingCollection():
+    foldername = "oulussms"
+    if not os.path.exists(foldername):
+        os.mkdir(foldername)
+        for t in ["train", "val", "test"]:
+            os.mkdir("%s/%s"%(foldername, t))
+    # Do 3 warps per pair
+    NSeq = 30
+    WarpsPerSeq = 4
+    trainsubjs = np.arange(1, 29).tolist()
+    valsubjs = np.arange(30, 40).tolist()
+    testsubjs = np.arange(40, 52).tolist()
+    #trainsubjs = [1, 2]
+    #valsubjs = [5, 6]
+    #testsubjs = [7, 8]
+    idx = 0
+    for (t, subjs) in zip(["train", "val", "test"], [trainsubjs, valsubjs, testsubjs]):
+        idx = 1
+        for subj in subjs:
+            for seq in range(1, NSeq+1):
+                filename = "%s/%s/%i.jpg"%(foldername, t, idx)
+                if os.path.exists(filename):
+                    print("Skipping subject %i sequence %i"%(subj, seq))
+                    idx += WarpsPerSeq
+                    continue
+                print("Doing subject %i sequence %i"%(subj, seq))
+                Images = getAVSSMsWarped(subj, seq, 256, 6, WarpsPerSeq)
+                for Im in Images:
+                    filename = "%s/%s/%i.jpg"%(foldername, t, idx)
+                    scipy.misc.imsave(filename, Im)
+                    idx += 1
+
+
+if __name__ == '__main__2':
     doComparisonExperiments()
     res = sio.loadmat("SSMsDist.mat")
     DVideo, DAudio, DFused = res['DVideo'], res['DAudio'], res['DFused']
@@ -305,9 +396,10 @@ if __name__ == '__main__':
     plt.show()
 
 
-if __name__ == '__main__2':
-    plt.figure(figsize=(12, 12))
+if __name__ == '__main__':
+    getWarpedTrainingCollection()
+    """
     for i in range(1, 30):
-        plt.clf()
-        getAVSSMs(1, i, 400, 40, do_plot=True)
-        plt.savefig("SSMs%i.png"%i)
+        res = getAVSSMsWarped(1, i, 256, 6)
+        scipy.misc.imsave("%i.jpg"%i, res)
+    """
