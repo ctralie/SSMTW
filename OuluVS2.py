@@ -7,7 +7,9 @@ from SlidingWindowVideoTDA.VideoTools import *
 from Alignment.AlignmentTools import *
 from SimilarityFusion import *
 from RQA import *
+from HKS import *
 import scipy.ndimage.morphology
+from sklearn.cluster import KMeans
 import time
 import os
 from multiprocessing import Pool as PPool
@@ -238,11 +240,25 @@ def getSSMsHelper(args):
     print(args)
     return getAVSSMsFused(subj, seq, ssmdim, K)
 
-def writeWekaHeader(fout, NSeq = 30):
+def writeWekaHeaderRQA(fout, NSeq = 30):
     rqa = getRQAArr(getRQAStats(np.random.randn(10, 10) > 0, 5, 5))[1]
     fout.write("@RELATION RQAs\n")
     for r in rqa:
         fout.write("@ATTRIBUTE %s real\n"%r)
+    labels = ["Seq%i"%i for i in range(1, NSeq+1)]
+    fout.write("@ATTRIBUTE sequence {")
+    labels = [l for l in labels]
+    for i in range(len(labels)):
+        fout.write(labels[i])
+        if i < len(labels)-1:
+            fout.write(",")
+    fout.write("}\n")
+    fout.write("@DATA\n")
+
+def writeWekaHeaderLap(fout, n_eigs, NSeq = 30):
+    fout.write("@RELATION HKSs\n")
+    for i in range(n_eigs):
+        fout.write("@ATTRIBUTE EIG%i real\n"%i)
     labels = ["Seq%i"%i for i in range(1, NSeq+1)]
     fout.write("@ATTRIBUTE sequence {")
     labels = [l for l in labels]
@@ -305,28 +321,34 @@ def doComparisonExperiments(NThreads = 8):
     else:
         res = sio.loadmat("SSMsDist.mat")
         DVideo, DAudio, DFused = res['DVideo'], res['DAudio'], res['DFused']
-    AllRQAs = [[], [], []]
-    DRQAs = []
     NSubj -= 1 #Skipping subject 29
+    n_eigs = 20
+    #ss = (2.0**ss)/2.0
+    plt.figure(figsize=(12, 12))
+    AllLaps = [[], [], []]
+    DLaps = []
     for i, SSMs in enumerate([VideoSSMs, AudioSSMs, FusedSSMs]):
-        fout = open("RQA%i.arff"%i, "w")
-        writeWekaHeader(fout, NSeq)
+        fout = open("Lap%i.arff"%i, "w")
+        writeWekaHeaderLap(fout, n_eigs, NSeq)
         for k in range(SSMs.shape[0]):
             print("%i %i"%(i, k))
             D = np.zeros((ssmdim, ssmdim))
-            D[I < J] = SSMs[k, :]
+            D[I > J] = SSMs[k, :]
             D = D + D.T
-            D = CSMToBinaryMutual(D, 0.2)
-            AllRQAs[i].append(getRQAArr(getRQAStats(D, 5, 5, do_norm = True))[0])
-            print(AllRQAs[i][-1])
-            for val in AllRQAs[i][-1]:
-                fout.write("%g, "%val)
-            fout.write("Seq%i\n"%(1+int(k)/NSubj))
-        AllRQAs[i] = np.array(AllRQAs[i])
-        DRQAs.append(getSSM(AllRQAs[i]))
+            W = np.array(D)
+            if i < 2:
+                W = getW(D, K) #Convert to similarity matrix
+            np.fill_diagonal(W, 0)
+            (w, v, L) = getLaplacianEigsDense(W, W.shape[0])
+            AllLaps[i].append(w[0:n_eigs])
+            for eidx in range(n_eigs):
+                fout.write("%g, "%w[eidx])
+            fout.write("Seq%i\n"%(1+int(k)%NSeq))
+        AllLaps[i] = np.array(AllLaps[i])
+        DLaps.append(getSSM(AllLaps[i]))
         fout.close()
-    [DVideoRQA, DAudioRQA, DFusedRQA] = DRQAs
-    sio.savemat("SSMsRQA.mat", {"DVideoRQA":DVideoRQA, "DAudioRQA":DAudioRQA, "DFusedRQA":DFusedRQA})
+    [DVideoLap, DAudioLap, DFusedLap] = DLaps
+    sio.savemat("SSMsLap.mat", {"DVideoLap":DVideoLap, "DAudioLap":DAudioLap, "DFusedLap":DFusedLap})
 
 def getPrecisionRecall(pD, NPerClass):
     PR = np.zeros(NPerClass-1)
@@ -378,25 +400,25 @@ def getWarpedTrainingCollection():
                     idx += 1
 
 
-if __name__ == '__main__2':
+if __name__ == '__main__':
     doComparisonExperiments()
     res = sio.loadmat("SSMsDist.mat")
     DVideo, DAudio, DFused = res['DVideo'], res['DAudio'], res['DFused']
-    res = sio.loadmat("SSMsRQA.mat")
-    DVideoRQA, DAudioRQA, DFusedRQA = res['DVideoRQA'], res['DAudioRQA'], res['DFusedRQA']
+    res = sio.loadmat("SSMsLap.mat")
+    DVideoLap, DAudioLap, DFusedLap = res['DVideoLap'], res['DAudioLap'], res['DFusedLap']
     NPerClass = DVideo.shape[0]/30
     AUROCs = []
-    for D in [DVideo, DAudio, DFused, DVideoRQA, DAudioRQA, DFusedRQA, np.random.rand(DVideo.shape[0], DVideo.shape[1])]:
+    for D in [DVideo, DAudio, DFused, DVideoLap, DAudioLap, DFusedLap, np.random.rand(DVideo.shape[0], DVideo.shape[1])]:
         PR = getPrecisionRecall(D, NPerClass)
         plt.plot(PR)
         AUROCs.append(np.mean(PR))
-    legend = ["VideoL2", "AudioL2", "FusedL2", "VideoRQA", "AudioRQA", "FusedRQA", "Random"]
+    legend = ["VideoL2", "AudioL2", "FusedL2", "VideoLap", "AudioLap", "FusedLap", "Random"]
     legend = ["%s (%.3g)"%(s, a) for (s, a) in zip(legend, AUROCs)]
     plt.legend(legend)
     plt.show()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__2':
     getWarpedTrainingCollection()
     """
     for i in range(1, 30):
