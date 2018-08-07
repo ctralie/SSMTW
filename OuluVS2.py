@@ -13,6 +13,8 @@ from sklearn.cluster import KMeans
 import time
 import os
 from multiprocessing import Pool as PPool
+from ripser import ripser, plot_dgms
+from DGMTools import *
 
 def imresize(D, dims, kind='cubic', use_scipy=False):
     """
@@ -240,34 +242,15 @@ def getSSMsHelper(args):
     print(args)
     return getAVSSMsFused(subj, seq, ssmdim, K)
 
-def writeWekaHeaderRQA(fout, NSeq = 30):
-    rqa = getRQAArr(getRQAStats(np.random.randn(10, 10) > 0, 5, 5))[1]
-    fout.write("@RELATION RQAs\n")
-    for r in rqa:
-        fout.write("@ATTRIBUTE %s real\n"%r)
-    labels = ["Seq%i"%i for i in range(1, NSeq+1)]
-    fout.write("@ATTRIBUTE sequence {")
-    labels = [l for l in labels]
-    for i in range(len(labels)):
-        fout.write(labels[i])
-        if i < len(labels)-1:
-            fout.write(",")
-    fout.write("}\n")
-    fout.write("@DATA\n")
-
-def writeWekaHeaderLap(fout, n_eigs, NSeq = 30):
-    fout.write("@RELATION HKSs\n")
-    for i in range(n_eigs):
-        fout.write("@ATTRIBUTE EIG%i real\n"%i)
-    labels = ["Seq%i"%i for i in range(1, NSeq+1)]
-    fout.write("@ATTRIBUTE sequence {")
-    labels = [l for l in labels]
-    for i in range(len(labels)):
-        fout.write(labels[i])
-        if i < len(labels)-1:
-            fout.write(",")
-    fout.write("}\n")
-    fout.write("@DATA\n")
+def promoteDiagonal(W, bias):
+    """
+    Make things off diagonal less similar
+    """
+    N = W.shape[0]
+    I, J = np.meshgrid(np.arange(N), np.arange(N))
+    weight = bias + (1.0-bias)*(1.0 - np.abs(I-J)/float(N))
+    weight = weight**4
+    return weight*W
 
 def doComparisonExperiments(NThreads = 8):
     ssmdim = 400
@@ -322,14 +305,12 @@ def doComparisonExperiments(NThreads = 8):
         res = sio.loadmat("SSMsDist.mat")
         DVideo, DAudio, DFused = res['DVideo'], res['DAudio'], res['DFused']
     NSubj -= 1 #Skipping subject 29
-    n_eigs = 20
-    #ss = (2.0**ss)/2.0
-    plt.figure(figsize=(12, 12))
-    AllLaps = [[], [], []]
-    DLaps = []
+    plt.figure(figsize=(18, 6))
+
+    # Now compute all of the persistence diagrams
+    AllDgms = [[], [], []]
+    DDgms = []
     for i, SSMs in enumerate([VideoSSMs, AudioSSMs, FusedSSMs]):
-        fout = open("Lap%i.arff"%i, "w")
-        writeWekaHeaderLap(fout, n_eigs, NSeq)
         for k in range(SSMs.shape[0]):
             print("%i %i"%(i, k))
             D = np.zeros((ssmdim, ssmdim))
@@ -339,16 +320,29 @@ def doComparisonExperiments(NThreads = 8):
             if i < 2:
                 W = getW(D, K) #Convert to similarity matrix
             np.fill_diagonal(W, 0)
-            (w, v, L) = getLaplacianEigsDense(W, W.shape[0])
-            AllLaps[i].append(w[0:n_eigs])
-            for eidx in range(n_eigs):
-                fout.write("%g, "%w[eidx])
-            fout.write("Seq%i\n"%(1+int(k)%NSeq))
-        AllLaps[i] = np.array(AllLaps[i])
-        DLaps.append(getSSM(AllLaps[i]))
-        fout.close()
-    [DVideoLap, DAudioLap, DFusedLap] = DLaps
-    sio.savemat("SSMsLap.mat", {"DVideoLap":DVideoLap, "DAudioLap":DAudioLap, "DFusedLap":DFusedLap})
+            #W = promoteDiagonal(W, 0.3)
+            tic = time.time()
+            #I1 = ripser(-W, distance_matrix=True)['dgms'][1]
+            I1 = doImageSublevelsetFiltration(-W)
+            I1 = I1[np.abs(I1[:, 1]-I1[:, 0]) > 0.1, :]
+            print(I1.shape[0])
+            PImg = getPersistenceImage(I1, [-1, 0, 0, 1], 0.05)['PI']
+            print("Elapsed Time: %.3g"%(time.time()-tic))
+            plt.clf()
+            plt.subplot(131)
+            plt.imshow(np.log(W+5e-2), cmap = 'afmhot')
+            plt.subplot(132)
+            plot_dgms(I1, lifetime=True)
+            plt.ylim([0, 1])
+            plt.xlim([-1, 0])
+            plt.subplot(133)
+            plt.imshow(PImg, cmap='afmhot')
+            plt.savefig("DGMS_%i_%i.svg"%(i, k), bbox_inches='tight')
+            AllDgms[i].append(PImg.flatten())
+        AllDgms[i] = np.array(AllDgms[i])
+        DDgms.append(getSSM(AllDgms[i]))
+    [DVideoDgm, DAudioDgm, DFusedDgm] = DDgms
+    sio.savemat("SSMsDgm.mat", {"DVideoDgm":DVideoDgm, "DAudioDgm":DAudioDgm, "DFusedDgm":DFusedDgm})
 
 def getPrecisionRecall(pD, NPerClass):
     PR = np.zeros(NPerClass-1)
@@ -404,15 +398,15 @@ if __name__ == '__main__':
     doComparisonExperiments()
     res = sio.loadmat("SSMsDist.mat")
     DVideo, DAudio, DFused = res['DVideo'], res['DAudio'], res['DFused']
-    res = sio.loadmat("SSMsLap.mat")
-    DVideoLap, DAudioLap, DFusedLap = res['DVideoLap'], res['DAudioLap'], res['DFusedLap']
+    res = sio.loadmat("SSMsDgm.mat")
+    DVideoDgm, DAudioDgm, DFusedDgm = res['DVideoDgm'], res['DAudioDgm'], res['DFusedDgm']
     NPerClass = DVideo.shape[0]/30
     AUROCs = []
-    for D in [DVideo, DAudio, DFused, DVideoLap, DAudioLap, DFusedLap, np.random.rand(DVideo.shape[0], DVideo.shape[1])]:
+    for D in [DVideo, DAudio, DFused, DVideoDgm, DAudioDgm, DFusedDgm, np.random.rand(DVideo.shape[0], DVideo.shape[1])]:
         PR = getPrecisionRecall(D, NPerClass)
         plt.plot(PR)
         AUROCs.append(np.mean(PR))
-    legend = ["VideoL2", "AudioL2", "FusedL2", "VideoLap", "AudioLap", "FusedLap", "Random"]
+    legend = ["VideoL2", "AudioL2", "FusedL2", "VideoDgm", "AudioDgm", "FusedDgm", "Random"]
     legend = ["%s (%.3g)"%(s, a) for (s, a) in zip(legend, AUROCs)]
     plt.legend(legend)
     plt.show()
