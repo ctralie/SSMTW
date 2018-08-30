@@ -30,7 +30,10 @@ def getW(D, K, Mu = 0.5):
     #by looking at k nearest neighbors, not including point itself
     Eps = MeanDist[:, None] + MeanDist[None, :] + DSym
     Eps = Eps/3
-    W = np.exp(-DSym**2/(2*(Mu*Eps)**2))
+    Denom = 2*(Mu*Eps)**2
+    Denom[np.isinf(Denom)] = -1 #Handle missing data
+    W = np.exp(-DSym**2/Denom)
+    W[Denom == -1] = 0
     return W
 
 def getWCSM(CSMAB, k1, k2, Mu = 0.5):
@@ -181,7 +184,7 @@ def doSimilarityFusionWs(Ws, K = 5, NIters = 20, reg = 1, PlotNames = [], verbos
                 Im[Idx, Idx] = 0
                 if Im.shape[0] > 400:
                     Im = interp.zoom(Im, 400.0/Im.shape[0])
-                plt.imshow(Im, interpolation = 'none', cmap = 'afmhot')
+                plt.imshow(Im, interpolation = 'none')
                 plt.title(PlotNames[i])
                 plt.axis('off')
             plt.savefig("SSMFusion%i.png"%it, dpi=150, bbox_inches='tight')

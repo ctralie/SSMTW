@@ -13,8 +13,9 @@ from sklearn.cluster import KMeans
 import time
 import os
 from multiprocessing import Pool as PPool
-from ripser import ripser, plot_dgms
-from DGMTools import *
+from Scattering import *
+import essentia
+import essentia.standard as ess
 
 def imresize(D, dims, kind='cubic', use_scipy=False):
     """
@@ -79,7 +80,9 @@ def getMFCCsLibrosa(XAudio, Fs, winSize, hopSize = 512, NBands = 40, fmax = 8000
     :return X: An (NMFCC x NWindows) array of MFCC samples
     """
     import librosa
-    S = librosa.core.stft(XAudio, winSize, hopSize)
+    S = librosa.core.stft(XAudio, winSize, hopSize, center=False)
+    print("winSize = %i"%winSize)
+    print("S.shape = ", S.shape)
     M = librosa.filters.mel(Fs, winSize, n_mels = NBands, fmax = fmax)
 
     X = M.dot(np.abs(S))
@@ -95,6 +98,50 @@ def getMFCCsLibrosa(XAudio, Fs, winSize, hopSize = 512, NBands = 40, fmax = 8000
         X = getZNorm(X)
     return X
 
+def getMFCCsEssentia(filename):
+    fs = 44100
+    audio = ess.MonoLoader(filename = filename, 
+                                          sampleRate = fs)()
+    # dynamic range expansion as done in HTK implementation
+    audio = audio*2**15
+
+    frameSize = 1102 # corresponds to htk default WINDOWSIZE = 250000.0 
+    hopSize = 441 # corresponds to htk default TARGETRATE = 100000.0
+    fftSize = 2048
+    spectrumSize= fftSize//2+1
+    zeroPadding = fftSize - frameSize
+
+    w = ess.Windowing(type = 'hamming', #  corresponds to htk default  USEHAMMING = T
+                        size = frameSize, 
+                        zeroPadding = zeroPadding,
+                        normalized = False,
+                        zeroPhase = False)
+
+    spectrum = ess.Spectrum(size = fftSize)
+
+    mfcc_htk = ess.MFCC(inputSize = spectrumSize,
+                        type = 'magnitude', # htk uses mel filterbank magniude
+                        warpingFormula = 'htkMel', # htk's mel warping formula
+                        weighting = 'linear', # computation of filter weights done in Hz domain
+                        highFrequencyBound = 8000, # corresponds to htk default
+                        lowFrequencyBound = 0, # corresponds to htk default
+                        numberBands = 26, # corresponds to htk default  NUMCHANS = 26
+                        numberCoefficients = 13,
+                        normalize = 'unit_max', # htk filter normaliation to have constant height = 1  
+                        dctType = 3, # htk uses DCT type III
+                        logType = 'log',
+                        liftering = 22) # corresponds to htk default CEPLIFTER = 22
+
+
+    mfccs = []
+    # startFromZero = True, validFrameThresholdRatio = 1 : the way htk computes windows
+    for frame in ess.FrameGenerator(audio, frameSize = frameSize, hopSize = hopSize , startFromZero = True, validFrameThresholdRatio = 1):
+        spect = spectrum(w(frame))
+        mel_bands, mfcc_coeffs = mfcc_htk(spect)
+        mfccs.append(mfcc_coeffs)
+
+    return np.array(mfccs)
+
 def resizeVideo(I, IDims, NewDims, do_plot = False):
     INew = []
     for i in range(I.shape[0]):
@@ -107,6 +154,26 @@ def resizeVideo(I, IDims, NewDims, do_plot = False):
         INew.append(F.flatten())
     INew = np.array(INew)
     return INew
+
+def getAudioVideoFeatures(s, i):
+    # TODO: How much to I need to worry about video and audio lining
+    # up after uniform resizing?
+    winSize = 512
+    hopSize = 256
+    videofilename = "OuluVS2/cropped_mouth_mp4_digit/%i/1/s%i_v1_u%i.mp4"%(s, s, i)
+    (I1, IDims) = loadImageIOVideo(videofilename)
+    I1 = resizeVideo(I1, IDims, (25, 25))
+    audiofilename = "OuluVS2/cropped_audio_dat/s%i_u%i.wav"%(s, i)
+    (XAudio, Fs) = getAudioLibrosa(audiofilename)
+    #XAudio = np.concatenate((XAudio, np.zeros(winSize-hopSize)))
+    I2 = getMFCCsLibrosa(XAudio, Fs, winSize, hopSize)
+    #I2 = getMFCCsEssentia(audiofilename)
+
+    #[I1, _] = getTimeDerivative(I1, 5)
+    #[I2, _] = getTimeDerivative(I2, 5)
+    #I1 = getZNorm(I1)
+    I2 = getZNorm(I2)
+    return (I1, I2)
 
 def getAVSSMsFused(s, i, ssmdim, K, do_plot = False):
     """
@@ -121,20 +188,7 @@ def getAVSSMsFused(s, i, ssmdim, K, do_plot = False):
     K : int
         Number of nearest neighbors for similarity network fusion
     """
-    winSize = 4096
-    hopSize = 256
-    filename = "OuluVS2/cropped_mouth_mp4_digit/%i/1/s%i_v1_u%i.mp4"%(s, s, i)
-    (I1, IDims) = loadImageIOVideo(filename)
-    I1 = resizeVideo(I1, IDims, (25, 25))
-    filename = "OuluVS2/cropped_audio_dat/s%i_u%i.wav"%(s, i)
-    (XAudio, Fs) = getAudioLibrosa(filename)
-    XAudio = np.concatenate((XAudio, np.zeros(winSize-hopSize)))
-    I2 = getMFCCsLibrosa(XAudio, Fs, winSize, hopSize)
-
-    #[I1, _] = getTimeDerivative(I1, 5)
-    #[I2, _] = getTimeDerivative(I2, 5)
-    I1 = getZNorm(I1)
-    I2 = getZNorm(I2)
+    I1, I2 = getAudioVideoFeatures(s, i)
     
     D1 = getSSM(I1)
     D2 = getSSM(I2)
@@ -242,6 +296,7 @@ def getSSMsHelper(args):
     print(args)
     return getAVSSMsFused(subj, seq, ssmdim, K)
 
+
 def promoteDiagonal(W, bias):
     """
     Make things off diagonal less similar
@@ -252,8 +307,20 @@ def promoteDiagonal(W, bias):
     weight = weight**4
     return weight*W
 
+def get_simulated_missing_chunks(perc_dropped, drop_chunk, ssmdim):
+    chunklen = int(drop_chunk*ssmdim)
+    nchunks = int(perc_dropped/drop_chunk)
+    idxs = np.arange(ssmdim)
+    missingidx = np.array([], dtype=int)
+    for c in range(nchunks):
+        i1 = np.random.randint(0, len(idxs)-chunklen+1)
+        missingidx = np.concatenate((missingidx, idxs[i1:i1+chunklen]))
+        idxs = np.concatenate((idxs[0:i1], idxs[i1+1::]))
+    return missingidx
+
 def doComparisonExperiments(NThreads = 8):
     ssmdim = 400
+    ssmdimres = 256
     K = int(ssmdim*0.1)
     [I, J] = np.meshgrid(np.arange(ssmdim), np.arange(ssmdim))
     NSeq = 30
@@ -305,12 +372,13 @@ def doComparisonExperiments(NThreads = 8):
         res = sio.loadmat("SSMsDist.mat")
         DVideo, DAudio, DFused = res['DVideo'], res['DAudio'], res['DFused']
     NSubj -= 1 #Skipping subject 29
-    plt.figure(figsize=(18, 6))
 
+    plt.figure(figsize=(20, 5))
     # Now compute all of the persistence diagrams
-    AllDgms = [[], [], []]
-    DDgms = []
+    DsScatter = []
+    batchsize = 100
     for i, SSMs in enumerate([VideoSSMs, AudioSSMs, FusedSSMs]):
+        Ds = []
         for k in range(SSMs.shape[0]):
             print("%i %i"%(i, k))
             D = np.zeros((ssmdim, ssmdim))
@@ -319,30 +387,73 @@ def doComparisonExperiments(NThreads = 8):
             W = np.array(D)
             if i < 2:
                 W = getW(D, K) #Convert to similarity matrix
-            np.fill_diagonal(W, 0)
-            #W = promoteDiagonal(W, 0.3)
-            tic = time.time()
-            #I1 = ripser(-W, distance_matrix=True)['dgms'][1]
-            I1 = doImageSublevelsetFiltration(-W)
-            I1 = I1[np.abs(I1[:, 1]-I1[:, 0]) > 0.1, :]
-            print(I1.shape[0])
-            PImg = getPersistenceImage(I1, [-1, 0, 0, 1], 0.05)['PI']
-            print("Elapsed Time: %.3g"%(time.time()-tic))
+            W[np.abs(I-J) <= 1] = 0 #Zero diagonal and off-diagonal
+            W = imresize(W, (ssmdimres, ssmdimres))
+            Ds.append(W)
+        AllScattering = []
+        NBatches = int(np.ceil(1.0*len(Ds)/batchsize))
+        for k in range(NBatches):
+            print("Doing SSMType %i batch %i of %i"%(i, k, NBatches))
+            AllScattering += getScatteringTransform(Ds[k*batchsize:(k+1)*batchsize], renorm=False)
+        ScatteringFeats = np.array([])
+        for j, images in enumerate(AllScattering):
+            scattering = np.array([])
+            for k in range(len(images)):
+                norm = np.sqrt(np.sum(images[k]**2))
+                if norm == 0:
+                    norm = 1
+                images[k] /= norm
+                scattering = np.concatenate((scattering, images[k].flatten()))
+            """
             plt.clf()
-            plt.subplot(131)
-            plt.imshow(np.log(W+5e-2), cmap = 'afmhot')
-            plt.subplot(132)
-            plot_dgms(I1, lifetime=True)
-            plt.ylim([0, 1])
-            plt.xlim([-1, 0])
-            plt.subplot(133)
-            plt.imshow(PImg, cmap='afmhot')
-            plt.savefig("DGMS_%i_%i.svg"%(i, k), bbox_inches='tight')
-            AllDgms[i].append(PImg.flatten())
-        AllDgms[i] = np.array(AllDgms[i])
-        DDgms.append(getSSM(AllDgms[i]))
-    [DVideoDgm, DAudioDgm, DFusedDgm] = DDgms
-    sio.savemat("SSMsDgm.mat", {"DVideoDgm":DVideoDgm, "DAudioDgm":DAudioDgm, "DFusedDgm":DFusedDgm})
+            plt.subplot(1, len(images)+1, 1)
+            plt.imshow(Ds[j], cmap = 'afmhot')
+            for k in range(len(images)):
+                plt.subplot(1, len(images)+1, k+2)
+                plt.imshow(images[k], cmap='afmhot')
+                plt.title("Scattering %i"%k)
+            """
+            if ScatteringFeats.size == 0:
+                ScatteringFeats = np.zeros((len(AllScattering), scattering.size), dtype=np.float32)
+            ScatteringFeats[j, :] = scattering.flatten()
+            #plt.savefig("%i_%i.png"%(i, j), bbox_inches='tight')
+        ScatteringFeats[np.isnan(ScatteringFeats)] = 0
+        DsScatter.append(getSSM(ScatteringFeats))
+    [DVideoScatter, DAudioScatter, DFusedScatter] = DsScatter
+    sio.savemat("SSMsScatter.mat", {"DVideoScatter":DVideoScatter, "DAudioScatter":DAudioScatter, "DFusedScatter":DFusedScatter})
+
+
+def doComparisonExperimentsRaw():
+    NSeq = 30
+    NSubj = 52
+    VideoRes = 256
+    AudioRes = 512
+    tvideo = np.linspace(0, 1, VideoRes)
+    taudio = np.linspace(0, 1, AudioRes)
+
+    AudioFeats = []
+    VideoFeats = []
+    for seq in range(1, NSeq+1):
+        print("Getting features for sequence %i of %i..."%(seq, NSeq))
+        #Skip subject 29 because data is missing for some reason
+        for subj in range(1, NSubj+1):
+            if subj == 29:
+                continue
+            print(".")
+            IVideo, IAudio = getAudioVideoFeatures(subj, seq)
+            IVideo = getInterpolatedEuclideanTimeSeries(IVideo, tvideo)
+            IAudio = getInterpolatedEuclideanTimeSeries(IAudio, taudio)
+            AudioFeats.append(IAudio.flatten())
+            VideoFeats.append(IVideo.flatten())
+    NSubj -= 1 #Skipping subject 29
+    AudioFeats = np.array(AudioFeats, dtype=np.float32)
+    VideoFeats = np.array(VideoFeats, dtype=np.float32)
+    DAudioRaw = getSSM(AudioFeats)
+    AudioFeats = None
+    DVideoRaw = getSSM(VideoFeats)
+    sio.savemat("SSMsRaw.mat", {"DAudioRaw":DAudioRaw, "DVideoRaw":DVideoRaw})
+
+
 
 def getPrecisionRecall(pD, NPerClass):
     PR = np.zeros(NPerClass-1)
@@ -394,23 +505,135 @@ def getWarpedTrainingCollection():
                     idx += 1
 
 
-if __name__ == '__main__':
-    doComparisonExperiments()
-    res = sio.loadmat("SSMsDist.mat")
+def makePrecisionRecall():
+    res = sio.loadmat("OuluVS2Results/SSMsDist.mat")
     DVideo, DAudio, DFused = res['DVideo'], res['DAudio'], res['DFused']
-    res = sio.loadmat("SSMsDgm.mat")
-    DVideoDgm, DAudioDgm, DFusedDgm = res['DVideoDgm'], res['DAudioDgm'], res['DFusedDgm']
+    res = sio.loadmat("OuluVS2Results/SSMsScatter.mat")
+    DVideoScatter, DAudioScatter, DFusedScatter = res['DVideoScatter'], res['DAudioScatter'], res['DFusedScatter']
+    res = sio.loadmat("OuluVS2Results/SSMsRQA.mat")
+    DVideoRQA, DAudioRQA, DFusedRQA = res['DVideoRQA'], res['DAudioRQA'], res['DFusedRQA']
+    res = sio.loadmat("OuluVS2Results/SSMsRaw.mat")
+    DAudioRaw, DVideoRaw = res['DAudioRaw'], res['DVideoRaw']
     NPerClass = DVideo.shape[0]/30
     AUROCs = []
-    for D in [DVideo, DAudio, DFused, DVideoDgm, DAudioDgm, DFusedDgm, np.random.rand(DVideo.shape[0], DVideo.shape[1])]:
+    for D in [DVideo, DAudio, DFused, DVideoScatter, DAudioScatter, DFusedScatter, \
+             DVideoRQA, DAudioRQA, DFusedRQA, DVideoRaw, DAudioRaw,\
+             np.random.rand(DVideo.shape[0], DVideo.shape[1])]:
         PR = getPrecisionRecall(D, NPerClass)
         plt.plot(PR)
         AUROCs.append(np.mean(PR))
-    legend = ["VideoL2", "AudioL2", "FusedL2", "VideoDgm", "AudioDgm", "FusedDgm", "Random"]
+    legend = ["VideoL2", "AudioL2", "FusedL2", "VideoScatter", "AudioScatter", "FusedScatter", "VideoRQA", "AudioRQA", "FusedRQA", "VideoRaw", "AudioRaw", "Random"]
     legend = ["%s (%.3g)"%(s, a) for (s, a) in zip(legend, AUROCs)]
     plt.legend(legend)
     plt.show()
 
+def getD(SSMs, k, ssmdim):
+    [I, J] = np.meshgrid(np.arange(ssmdim), np.arange(ssmdim))
+    D = np.zeros((ssmdim, ssmdim))
+    D[I > J] = SSMs[k, :]
+    D = D + D.T
+    D[D < 0] = 0
+    return D
+
+
+
+def missingDataExample(subj, seq, stretch_fac, perc_dropped = 0.1, drop_chunk = 0.02, ssmdim = 400, use_precomputed = False, plot_SSMs = True):
+    from SSMGUI import saveResultsJSON
+    import pyrubberband as pyrb
+
+    #For similarity fusion
+    K = int(0.1*ssmdim)
+    NIters = 10
+    
+    NSeq = 30
+    NSubj = 51
+
+    # Step 1: Load in or compute SSMs
+    if use_precomputed:
+        k = subj*NSubj + seq
+        print("Loading SSMs...")
+        res = sio.loadmat("AllSSMs.mat")
+        print("Finished loading SSMs")
+        VideoSSMs, AudioSSMs, FusedSSMs = res['VideoSSMs'], res['AudioSSMs'], res['FusedSSMs']
+        DVideo = getD(VideoSSMs, k, ssmdim)
+        DAudio = getD(AudioSSMs, k, ssmdim)
+        DFused = getD(FusedSSMs, k, ssmdim)
+    else:
+        IVideo, IAudio = getAudioVideoFeatures(subj+1, seq+1)
+        DAudio = imresize(getCSM(IAudio, IAudio), (ssmdim, ssmdim))
+        DVideo = imresize(getCSM(IVideo, IVideo), (ssmdim, ssmdim))
+
+    # Convert to similarity scale from metric scale on video/audio
+    DVideo = getW(DVideo, K)
+    DAudio = getW(DAudio, K)
+
+    # Step 2: Randomly drop audio data and do the fusion
+    missingidx = get_simulated_missing_chunks(perc_dropped, drop_chunk, ssmdim)
+    DAudioDisp = np.array(DAudio)
+    DAudioDisp[missingidx, :] = -0.3
+    DAudioDisp[:, missingidx] = -0.3
+    DAudio[missingidx, :] = DVideo[missingidx, :]
+    DAudio[:, missingidx] = DVideo[:, missingidx]
+    
+    DFused = doSimilarityFusionWs([DAudio, DVideo], K=K, NIters=NIters, PlotNames=["Audio", "Video"])
+
+    # Step 3: Plot Results
+    np.fill_diagonal(DAudio, 0)
+    np.fill_diagonal(DVideo, 0)
+    np.fill_diagonal(DFused, np.min(DFused))
+
+    plt.figure(figsize=(12, 12))
+    if plot_SSMs:
+        Composited = np.zeros((ssmdim, ssmdim, 3))
+        Composited[:, :, 0] = DVideo
+        Composited[:, :, 1] = DAudio
+        Composited[:, :, 0] *= 255.0/np.max(Composited[:, :, 0])
+        Composited[:, :, 1] *= 255.0/np.max(Composited[:, :, 1])
+        Composited = np.array(np.round(Composited), dtype=np.uint8)
+        plt.subplot(221)
+        plt.imshow(DVideo)
+        plt.colorbar()
+        plt.title("Video")
+        plt.subplot(222)
+        plt.imshow(DAudioDisp)
+        plt.colorbar()
+        plt.title("Audio")
+        plt.subplot(223)
+        plt.imshow(Composited)
+        plt.colorbar()
+        plt.title("Composited")
+        plt.subplot(224)
+        plt.imshow(DFused)
+        plt.colorbar()
+        plt.title("Fused")
+        plt.savefig("%i_%i.png"%(subj+1, seq+1), bbox_inches='tight')
+
+    # Step 4: Output (possibly stretched) audio
+    audiofilename = "OuluVS2/cropped_audio_dat/s%i_u%i.wav"%(subj+1, seq+1)
+    XAudio, Fs = getAudioLibrosa(audiofilename)
+    XAudio = pyrb.time_stretch(XAudio, Fs, stretch_fac)
+    sio.wavfile.write("temp.wav", Fs, XAudio)
+    filename = "%i_%i.mp3"%(subj+1, seq+1)
+    if os.path.exists(filename):
+        os.remove(filename)
+    subprocess.call(["avconv", "-i", "temp.wav", filename])
+
+    # Step 5: Output (possibly stretched) video
+    videofilename = "OuluVS2/cropped_mouth_mp4_digit/%i/1/s%i_v1_u%i.mp4"%(subj+1, subj+1, seq+1)
+    #TODO: FINISH THIS
+
+    # Step 6: Output JSON file for GUI
+    LenSec = float(XAudio.size)/Fs
+    times = np.linspace(0, LenSec, ssmdim)
+    saveResultsJSON(filename, times, DFused, "%i_%i.json"%(subj+1, seq+1))
+
+if __name__ == '__main__':
+    doComparisonExperiments()
+    #doComparisonExperimentsRaw()
+    #missingDataExample(subj = 20, seq = 10, stretch_fac = 0.3, perc_dropped=0.3, drop_chunk=0.05)
+
+if __name__ == '__main__2':
+    makePrecisionRecall()
 
 if __name__ == '__main__2':
     getWarpedTrainingCollection()
