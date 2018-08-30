@@ -156,8 +156,6 @@ def resizeVideo(I, IDims, NewDims, do_plot = False):
     return INew
 
 def getAudioVideoFeatures(s, i):
-    # TODO: How much to I need to worry about video and audio lining
-    # up after uniform resizing?
     winSize = 512
     hopSize = 256
     videofilename = "OuluVS2/cropped_mouth_mp4_digit/%i/1/s%i_v1_u%i.mp4"%(s, s, i)
@@ -172,7 +170,7 @@ def getAudioVideoFeatures(s, i):
     #[I1, _] = getTimeDerivative(I1, 5)
     #[I2, _] = getTimeDerivative(I2, 5)
     #I1 = getZNorm(I1)
-    I2 = getZNorm(I2)
+    #I2 = getZNorm(I2)
     return (I1, I2)
 
 def getAVSSMsFused(s, i, ssmdim, K, do_plot = False):
@@ -190,10 +188,8 @@ def getAVSSMsFused(s, i, ssmdim, K, do_plot = False):
     """
     I1, I2 = getAudioVideoFeatures(s, i)
     
-    D1 = getSSM(I1)
-    D2 = getSSM(I2)
-    D1 = imresize(D1, (ssmdim, ssmdim))
-    D2 = imresize(D2, (ssmdim, ssmdim))
+    D1 = imresize(getCSM(I1, I1), (ssmdim, ssmdim))
+    D2 = imresize(getCSM(I2, I2), (ssmdim, ssmdim))
 
     D3 = doSimilarityFusion([D1, D2], K=K)
 
@@ -232,63 +228,6 @@ def getAVSSMsFused(s, i, ssmdim, K, do_plot = False):
         plt.imshow(pD3, cmap = 'afmhot', interpolation = 'none')
     
     return np.concatenate((D1[:, :, None], D2[:, :, None], D3[:, :, None]), 2)
-
-def makedret(I1, I2, ssmdim):
-    D1 = getSSM(getZNorm(I1)) / 2.0
-    D2 = getSSM(getZNorm(I2)) / 2.0
-
-    D1Resized = imresize(D1, (ssmdim, ssmdim))
-    D2Resized = imresize(D2, (ssmdim, ssmdim))
-
-    DRet = np.zeros((ssmdim, ssmdim*2))
-    DRet[:, 0:ssmdim] = D1Resized
-    DRet[:, ssmdim::] = D2Resized
-    DRet[DRet < 0] = 0
-    DRet[DRet > 1] = 1
-
-    DRet = DRet[:, :, None]
-    DRet = np.concatenate((DRet, DRet, DRet), 2)
-    return np.array(np.round(255*DRet), dtype = np.uint8)
-
-def getAVSSMsWarped(s, i, ssmdim, K, NWarps):
-    """
-    Parameters
-    ----------
-    s : int
-        Subject number
-    i : int
-        Sequence number (between 1-30)
-    ssmdim : int
-        Resized SSM dimension to rescale audio and video to same time domain
-    K : int
-        Number of basis elements in the warping path dictionary
-    NWarps : int
-        Number of warps to sample (including the unwarped image)
-    
-    Returns
-    -------
-    List of warped images, including the original
-    """
-    winSize = 4096
-    hopSize = 256
-    filename = "OuluVS2/cropped_mouth_mp4_digit/%i/1/s%i_v1_u%i.mp4"%(s, s, i)
-    (I1, IDims) = loadImageIOVideo(filename)
-    I1 = resizeVideo(I1, IDims, (25, 50))
-    filename = "OuluVS2/cropped_audio_dat/s%i_u%i.wav"%(s, i)
-    (XAudio, Fs) = getAudioLibrosa(filename)
-    XAudio = np.concatenate((XAudio, np.zeros(winSize-hopSize)))
-    I2 = getMFCCsLibrosa(XAudio, Fs, winSize, hopSize)
-    # Interpolate video so it has the same time resolution as audio
-    I1 = getInterpolatedEuclideanTimeSeries(I1, np.linspace(0, 1, I2.shape[0]))
-    Images = [makedret(I1, I2, ssmdim)]
-
-    WarpDict = getWarpDictionary(I1.shape[0])
-    for w in range(NWarps-1):
-        t = getWarpingPath(WarpDict, K, False)
-        I1Warped = getInterpolatedEuclideanTimeSeries(I1, t)
-        I2Warped = getInterpolatedEuclideanTimeSeries(I2, t)
-        Images.append(makedret(I1Warped, I2Warped, ssmdim))
-    return Images
     
 
 def getSSMsHelper(args):
@@ -550,7 +489,8 @@ def missingDataExample(subj, seq, stretch_fac, perc_dropped = 0.1, drop_chunk = 
 
     # Step 1: Load in or compute SSMs
     if use_precomputed:
-        k = subj*NSubj + seq
+        k = seq*NSubj+subj
+        print("k = %i"%k)
         print("Loading SSMs...")
         res = sio.loadmat("AllSSMs.mat")
         print("Finished loading SSMs")
@@ -575,7 +515,7 @@ def missingDataExample(subj, seq, stretch_fac, perc_dropped = 0.1, drop_chunk = 
     DAudio[missingidx, :] = DVideo[missingidx, :]
     DAudio[:, missingidx] = DVideo[:, missingidx]
     
-    DFused = doSimilarityFusionWs([DAudio, DVideo], K=K, NIters=NIters, PlotNames=["Audio", "Video"])
+    DFused = doSimilarityFusionWs([DAudio, DVideo], K=K, NIters=NIters)
 
     # Step 3: Plot Results
     np.fill_diagonal(DAudio, 0)
@@ -627,10 +567,14 @@ def missingDataExample(subj, seq, stretch_fac, perc_dropped = 0.1, drop_chunk = 
     times = np.linspace(0, LenSec, ssmdim)
     saveResultsJSON(filename, times, DFused, "%i_%i.json"%(subj+1, seq+1))
 
-if __name__ == '__main__':
+if __name__ == '__main__2':
     doComparisonExperiments()
     #doComparisonExperimentsRaw()
-    #missingDataExample(subj = 20, seq = 10, stretch_fac = 0.3, perc_dropped=0.3, drop_chunk=0.05)
+
+if __name__ == '__main__':
+    np.random.seed(4)
+    missingDataExample(subj = 20, seq = 10, stretch_fac = 0.3, perc_dropped=0.0,\
+                         drop_chunk=0.05, use_precomputed=True)
 
 if __name__ == '__main__2':
     makePrecisionRecall()

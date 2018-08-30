@@ -50,7 +50,7 @@ def saveResultsJSON(filename, times, W, jsonfilename):
     Results['audiofile'] = getBase64File(filename)
     WOut = np.array(W)
     np.fill_diagonal(WOut, 0)
-    Results['W'] = getBase64PNGImage(WOut, 'afmhot', 5e-2)
+    Results['W'] = getBase64PNGImage(WOut, 'viridis', 5e-2)
     fout = open(jsonfilename, "w")
     fout.write(json.dumps(Results))
     fout.close()
